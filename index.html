@@ -138,12 +138,13 @@ h1 .accent { color: var(--accent); }
 }
 
 .score-label {
-  font-family: 'DotGothic16', monospace;
-  font-size: 10px;
-  letter-spacing: 0.15em;
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
   color: var(--ink);
-  opacity: 0.55;
-  margin-bottom: 2px;
+  opacity: 0.65;
+  margin-bottom: 3px;
 }
 
 .score-value {
@@ -560,23 +561,23 @@ button.syrup.selected:hover { transform: translate(0, 0); }
 <div class="game-wrap">
   <div class="scoreboard">
     <div class="score-item">
-      <div class="score-label">HEIGHT</div>
+      <div class="score-label">たかさ</div>
       <div class="score-value" id="height">0<span class="unit">m</span></div>
     </div>
     <div class="score-item time" id="time-item">
-      <div class="score-label">TIME</div>
-      <div class="score-value" id="time">30<span class="unit">s</span></div>
+      <div class="score-label">じかん</div>
+      <div class="score-value" id="time">30<span class="unit">びょう</span></div>
     </div>
     <div class="score-item" id="rot-item">
-      <div class="score-label">ROTATIONS</div>
+      <div class="score-label">まわした</div>
       <div class="score-value" id="rotations">0</div>
     </div>
     <div class="score-item best">
-      <div class="score-label">★ BEST</div>
+      <div class="score-label">★ きろく</div>
       <div class="best-stack">
         <div class="best-row"><span id="best-height">0</span><span class="unit">m</span></div>
         <div class="best-bar"><div class="best-bar-fill" id="best-height-bar"></div></div>
-        <div class="best-row score"><span id="best-score">0</span><span class="unit">pt</span></div>
+        <div class="best-row score"><span id="best-score">0</span><span class="unit">てん</span></div>
         <div class="best-bar"><div class="best-bar-fill" id="best-score-bar"></div></div>
       </div>
     </div>
@@ -3118,17 +3119,17 @@ function updateScoreUI() {
   const displayM = (displayCm / 100).toFixed(1);
   document.getElementById('height').innerHTML = displayM + '<span class="unit">m</span>';
 
-  // ROTATIONS slot — repurposed during eating/done to show BITES / MULT
+  // まわした slot — eating/done では「たべた / かけざん」 に切り替え
   const rotEl = document.getElementById('rotations');
   const rotLabel = document.querySelector('#rot-item .score-label');
   if (state.phase === 'eating') {
-    rotLabel.textContent = 'BITES';
+    rotLabel.textContent = 'たべた';
     rotEl.textContent = state.eatingClicks + '/' + state.eatingMaxClicks;
   } else if (state.phase === 'done') {
-    rotLabel.textContent = '× MULT';
+    rotLabel.textContent = '× かけざん';
     rotEl.innerHTML = state.finalMultiplier.toFixed(1) + '<span class="unit">×</span>';
   } else {
-    rotLabel.textContent = 'ROTATIONS';
+    rotLabel.textContent = 'まわした';
     rotEl.textContent = state.rotations;
   }
 
@@ -3169,12 +3170,12 @@ function updateScoreUI() {
   const timeEl = document.getElementById('time');
   const timeItem = document.getElementById('time-item');
   if (state.phase === 'eating' || state.phase === 'done') {
-    timeEl.innerHTML = state.eatingElapsed.toFixed(1) + '<span class="unit">s</span>';
+    timeEl.innerHTML = state.eatingElapsed.toFixed(1) + '<span class="unit">びょう</span>';
     timeItem.classList.remove('urgent');
     timeItem.classList.toggle('done', state.phase === 'done');
   } else {
     const secs = Math.ceil(state.timeLeft);
-    timeEl.innerHTML = secs + '<span class="unit">s</span>';
+    timeEl.innerHTML = secs + '<span class="unit">びょう</span>';
     timeItem.classList.toggle('urgent', state.phase === 'playing' && secs <= 5);
     timeItem.classList.toggle('done',   state.phase === 'finished');
   }
@@ -3487,7 +3488,7 @@ function finishEating() {
   const heightM  = (state.frozenHeightCm / 100).toFixed(2);
   let subline = `${heightM}m × ${state.finalMultiplier.toFixed(1)}倍`;
   if (state.comboBest >= 5)     subline += ` × 🔥${comboBonus.toFixed(2)}`;
-  subline += ` = ${state.finalScore}pt`;
+  subline += ` = ${state.finalScore}てん`;
   state.praiseLabel = headline + '\n' + subline;
 
   document.getElementById('hint').textContent = '🎉 完食！ もう1回？ → 🔄 もう1回！';
