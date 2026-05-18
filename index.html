@@ -772,6 +772,19 @@ const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+// ---------- sprite preload ----------
+// procedural コードを sprite に置き換え。 sprite 不在時はその要素だけ描画 skip
+// (画像 load 完了まで数 ms の broken 表示を避けるため complete check で gate)。
+// user が assets/images/sprites/ 内の同名 PNG を生成画像で上書きすれば即反映。
+const sprites = {
+  penguin:   Object.assign(new Image(), { src: 'assets/images/sprites/char-penguin.png' }),
+  shirokuma: Object.assign(new Image(), { src: 'assets/images/sprites/char-shirokuma.png' }),
+  chick:     Object.assign(new Image(), { src: 'assets/images/sprites/char-chick.png' }),
+  machine:   Object.assign(new Image(), { src: 'assets/images/sprites/machine-body.png' }),
+  bowl:      Object.assign(new Image(), { src: 'assets/images/sprites/bowl.png' }),
+};
+const spriteReady = (sp) => sp && sp.complete && sp.naturalWidth > 0;
+
 function getPointer(e) {
   const rect = canvas.getBoundingClientRect();
   const t = e.touches ? e.touches[0] : e;
@@ -974,71 +987,19 @@ function addFluff(x, y) {
 
 // ---------- drawing ----------
 function drawBowl(g) {
-  const { bowlCenterX, bowlRimY, bowlBottomY, bowlW, scale } = g;
-  const halfW = bowlW / 2;
-  const sw = Math.max(1, 3 * scale); // scaled stroke width
-
-  ctx.save();
-  // bowl body
-  ctx.fillStyle = '#fff';
-  ctx.strokeStyle = '#2a3a4d';
-  ctx.lineWidth = sw;
-  ctx.beginPath();
-  ctx.moveTo(bowlCenterX - halfW, bowlRimY);
-  ctx.quadraticCurveTo(bowlCenterX - halfW * 1.0, bowlBottomY + 5, bowlCenterX - halfW * 0.55, bowlBottomY);
-  ctx.lineTo(bowlCenterX + halfW * 0.55, bowlBottomY);
-  ctx.quadraticCurveTo(bowlCenterX + halfW * 1.0, bowlBottomY + 5, bowlCenterX + halfW, bowlRimY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  // pattern: traditional seigaiha-ish waves in blue
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(bowlCenterX - halfW * 0.97, bowlRimY + 2);
-  ctx.quadraticCurveTo(bowlCenterX - halfW * 0.97, bowlBottomY + 4, bowlCenterX - halfW * 0.55, bowlBottomY - 2);
-  ctx.lineTo(bowlCenterX + halfW * 0.55, bowlBottomY - 2);
-  ctx.quadraticCurveTo(bowlCenterX + halfW * 0.97, bowlBottomY + 4, bowlCenterX + halfW * 0.97, bowlRimY + 2);
-  ctx.closePath();
-  ctx.clip();
-
-  ctx.fillStyle = '#dceffa';
-  ctx.fillRect(bowlCenterX - halfW, bowlRimY, bowlW, bowlBottomY - bowlRimY + 8);
-
-  // wave bands
-  ctx.strokeStyle = '#4287d6';
-  ctx.lineWidth = Math.max(0.8, 1.5 * scale);
-  ctx.globalAlpha = 0.6;
-  const waveStride = 12 * scale;
-  const waveArcW = 18 * scale;
-  const waveArcR = 9 * scale;
-  for (let i = 0; i < 3; i++) {
-    ctx.beginPath();
-    const yy = bowlRimY + 8 * scale + i * waveStride;
-    for (let xx = bowlCenterX - halfW; xx <= bowlCenterX + halfW; xx += waveArcW) {
-      ctx.arc(xx, yy, waveArcR, Math.PI, 0, false);
-    }
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // rim highlight
-  ctx.beginPath();
-  ctx.moveTo(bowlCenterX - halfW + 4 * scale, bowlRimY - 1);
-  ctx.lineTo(bowlCenterX + halfW - 4 * scale, bowlRimY - 1);
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = Math.max(1, 2 * scale);
-  ctx.stroke();
-
-  // bowl rim
-  ctx.beginPath();
-  ctx.ellipse(bowlCenterX, bowlRimY, halfW, 8 * scale, 0, 0, TAU);
-  ctx.fillStyle = '#fff';
-  ctx.fill();
-  ctx.strokeStyle = '#2a3a4d';
-  ctx.lineWidth = sw;
-  ctx.stroke();
-  ctx.restore();
+  if (!spriteReady(sprites.bowl)) return;
+  // sprite was exported with bowlW=280, scale=1, sprite size 360×120,
+  // bowl 足元 at sprite_h - 12 = 108. → scale で uniform 縮拡。
+  const { bowlCenterX, bowlBottomY, scale } = g;
+  const drawW = 360 * scale;
+  const drawH = 120 * scale;
+  ctx.drawImage(
+    sprites.bowl,
+    bowlCenterX - drawW / 2,
+    bowlBottomY - 108 * scale,
+    drawW,
+    drawH
+  );
 }
 
 function drawPile(g) {
@@ -1291,94 +1252,36 @@ function drawSyrupStream(g) {
 }
 
 function drawMachine(g) {
-  const cx = g.machineCenterX;
-  const bottomY = g.machineBottomY;
-  const topY = g.machineTopY;
-  const s = g.scale;
-  const bodyW = 100 * s;
-  const halfW = bodyW / 2;
+  drawMachineBody(g);
+  drawHandle(g);
+}
 
-  ctx.save();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = '#2a3a4d';
+// 機械本体は sprite (= 動かない部分)。
+// 後で user 生成画像を assets/images/sprites/machine-body.png に上書きで即反映。
+function drawMachineBody(g) {
+  if (!spriteReady(sprites.machine)) return;
+  // sprite was exported with scale=1, sprite size 240×440, machine 足元 at sprite_h - 10 = 430.
+  const drawW = 240 * g.scale;
+  const drawH = 440 * g.scale;
+  ctx.drawImage(
+    sprites.machine,
+    g.machineCenterX - drawW / 2,
+    g.machineBottomY - 430 * g.scale,
+    drawW,
+    drawH
+  );
+}
 
-  // ----- ice block at very top: a glass cube on top of machine -----
-  const iceTopY = topY - 25 * s;
-  const iceW = 56 * s;
-  ctx.save();
-  const iceGrad = ctx.createLinearGradient(cx - iceW/2, iceTopY, cx + iceW/2, topY);
-  iceGrad.addColorStop(0, 'rgba(220,238,250,0.95)');
-  iceGrad.addColorStop(1, 'rgba(160,210,230,0.85)');
-  ctx.fillStyle = iceGrad;
-  // rounded ice block
-  roundRect(cx - iceW/2, iceTopY, iceW, 28 * s, 6 * s);
-  ctx.fill();
-  ctx.stroke();
-  // ice highlight
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillRect(cx - iceW/2 + 5 * s, iceTopY + 4 * s, 4 * s, 18 * s);
-  ctx.restore();
-
-  // ----- top dome -----
-  ctx.fillStyle = '#fafafa';
-  ctx.beginPath();
-  ctx.moveTo(cx - halfW, topY + 10 * s);
-  ctx.quadraticCurveTo(cx, topY - 15 * s, cx + halfW, topY + 10 * s);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  // red band on dome
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(cx - halfW + 4, topY + 8 * s);
-  ctx.quadraticCurveTo(cx, topY - 12 * s, cx + halfW - 4, topY + 8 * s);
-  ctx.lineTo(cx + halfW - 4, topY + 16 * s);
-  ctx.quadraticCurveTo(cx, topY - 4 * s, cx - halfW + 4, topY + 16 * s);
-  ctx.closePath();
-  ctx.fillStyle = '#e94560';
-  ctx.fill();
-  ctx.restore();
-
-  // ----- main body -----
-  ctx.fillStyle = '#fafafa';
-  roundRect(cx - halfW, topY + 10 * s, bodyW, (bottomY - topY) - 10 * s, 4 * s);
-  ctx.fill();
-  ctx.stroke();
-
-  // body label panel
-  ctx.fillStyle = '#fff8e1';
-  roundRect(cx - 32 * s, topY + 40 * s, 64 * s, 36 * s, 4 * s);
-  ctx.fill();
-  ctx.strokeStyle = '#2a3a4d';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // label text "氷"
-  ctx.fillStyle = '#e94560';
-  ctx.font = `${22 * s}px 'Yusei Magic', serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('氷', cx, topY + 58 * s);
-
-  // ----- outlet at bottom -----
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = '#2a3a4d';
-  ctx.fillStyle = '#3a3a3a';
-  roundRect(cx - 22 * s, bottomY - 12 * s, 44 * s, 12 * s, 3 * s);
-  ctx.fill();
-  ctx.stroke();
-
-  // ----- left support (foot) -----
-  ctx.fillStyle = '#3d3d3d';
-  roundRect(cx - halfW - 4, bottomY - 2, bodyW + 8, 6 * s, 2);
-  ctx.fill();
-  ctx.stroke();
-
-  // ----- crank arm + handle on right -----
+// ハンドルは state.handleAngle で常時動くので procedural のまま。
+function drawHandle(g) {
   const px = g.handlePivotX;
   const py = g.handlePivotY;
   const armLen = g.armLen;
+  const s = g.scale;
+
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a3a4d';
 
   // pivot circle (bolt)
   ctx.fillStyle = '#6c757d';
@@ -1418,7 +1321,6 @@ function drawMachine(g) {
   ctx.strokeStyle = '#2a3a4d';
   ctx.lineWidth = 3;
   ctx.stroke();
-
   // wood ring detail
   ctx.beginPath();
   ctx.arc(tipX, tipY, 6 * s, 0, TAU);
@@ -1429,7 +1331,6 @@ function drawMachine(g) {
 
   // arrow hint if rotations is low
   if (state.rotations < 1 && !state.isDragging) {
-    const hintT = (performance.now() / 500) % 1;
     ctx.save();
     ctx.globalAlpha = 0.6 + Math.sin(performance.now() * 0.005) * 0.3;
     ctx.translate(px, py);
@@ -1520,169 +1421,39 @@ function drawParticles() {
 // ---------- celebration: characters, sparkles, praise banner ----------
 
 function drawPenguin(x, y, size, t, opts = {}) {
-  // simple stylized penguin with raised flippers and a bob
-  const bob   = Math.sin(t * 3 + (opts.phase || 0)) * 2;
-  const flap  = Math.sin(t * 4.5 + (opts.phase || 0)) * 0.45;
-  const W = size * 0.62, B = size * 0.85;
+  if (!spriteReady(sprites.penguin)) return;
+  const bob = Math.sin(t * 3 + (opts.phase || 0)) * 2;
+  // sprite 256x256 was exported with drawPenguin(W/2, H*0.80, 110, ...)
+  // → 表示時の scale: drawSize = size * (256 / 110)
+  const drawSize = size * 256 / 110;
   ctx.save();
   ctx.translate(x, y + bob);
-  // feet
-  ctx.fillStyle = '#ff9d3d';
-  ctx.beginPath(); ctx.ellipse(-size*0.20, B*0.95, size*0.20, size*0.075, 0, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( size*0.20, B*0.95, size*0.20, size*0.075, 0, 0, TAU); ctx.fill();
-  // body
-  ctx.fillStyle = opts.bodyColor || '#243447';
-  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#0c1422';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // white belly
-  ctx.fillStyle = '#fff8ec';
-  ctx.beginPath(); ctx.ellipse(0, size*0.12, W*0.66, B*0.74, 0, 0, TAU); ctx.fill();
-  // flippers (raised, waving)
-  ctx.fillStyle = opts.bodyColor || '#243447';
-  ctx.save();
-  ctx.translate(-W*0.92, -B*0.10);
-  ctx.rotate(-0.9 + flap);
-  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.42, 0, 0, TAU); ctx.fill();
-  ctx.restore();
-  ctx.save();
-  ctx.translate(W*0.92, -B*0.10);
-  ctx.rotate(0.9 - flap);
-  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.42, 0, 0, TAU); ctx.fill();
-  ctx.restore();
-  // eyes
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.ellipse(-size*0.16, -size*0.38, size*0.13, size*0.16, 0, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( size*0.16, -size*0.38, size*0.13, size*0.16, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#0c1422';
-  ctx.beginPath(); ctx.arc(-size*0.14, -size*0.36, size*0.065, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc( size*0.18, -size*0.36, size*0.065, 0, TAU); ctx.fill();
-  // beak
-  ctx.fillStyle = '#ff9d3d';
-  ctx.beginPath();
-  ctx.moveTo(0, -size*0.20);
-  ctx.lineTo(-size*0.11, -size*0.07);
-  ctx.lineTo( size*0.11, -size*0.07);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = '#a8551d';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  // cheek blush
-  ctx.fillStyle = 'rgba(255,140,140,0.55)';
-  ctx.beginPath(); ctx.ellipse(-size*0.30, -size*0.20, size*0.10, size*0.06, 0, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( size*0.30, -size*0.20, size*0.10, size*0.06, 0, 0, TAU); ctx.fill();
+  if (opts.flip) ctx.scale(-1, 1);
+  ctx.drawImage(sprites.penguin, -drawSize / 2, -drawSize * 0.80, drawSize, drawSize);
   ctx.restore();
 }
 
 function drawShirokuma(x, y, size, t, opts = {}) {
-  // chubby polar-bear: cream/white round body, tiny ears
+  if (!spriteReady(sprites.shirokuma)) return;
   const bob = Math.sin(t * 2.8 + (opts.phase || 0)) * 2;
-  const W = size * 0.72, B = size * 0.82;
+  const drawSize = size * 256 / 110;
   ctx.save();
   ctx.translate(x, y + bob);
   if (opts.flip) ctx.scale(-1, 1);
-  // feet
-  ctx.fillStyle = '#f1e5d2';
-  ctx.beginPath(); ctx.ellipse(-size*0.24, B*0.95, size*0.20, size*0.080, 0, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( size*0.24, B*0.95, size*0.20, size*0.080, 0, 0, TAU); ctx.fill();
-  // body (egg shape)
-  ctx.fillStyle = '#fffaf0';
-  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#a99a7a';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // ears (small bumps on top)
-  ctx.beginPath(); ctx.arc(-W*0.55, -B*0.78, size*0.13, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.arc( W*0.55, -B*0.78, size*0.13, 0, TAU); ctx.fill(); ctx.stroke();
-  // inner ears
-  ctx.fillStyle = '#ffd1d1';
-  ctx.beginPath(); ctx.arc(-W*0.55, -B*0.76, size*0.06, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc( W*0.55, -B*0.76, size*0.06, 0, TAU); ctx.fill();
-  // arms raised in cheer
-  const arm = Math.sin(t * 4 + (opts.phase || 0)) * 0.3;
-  ctx.fillStyle = '#fffaf0';
-  ctx.strokeStyle = '#a99a7a';
-  ctx.save();
-  ctx.translate(-W*0.85, -B*0.05);
-  ctx.rotate(-1.1 + arm);
-  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.34, 0, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.restore();
-  ctx.save();
-  ctx.translate(W*0.85, -B*0.05);
-  ctx.rotate(1.1 - arm);
-  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.34, 0, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.restore();
-  // muzzle
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.ellipse(0, size*0.06, size*0.28, size*0.20, 0, 0, TAU); ctx.fill();
-  // nose
-  ctx.fillStyle = '#2a3a4d';
-  ctx.beginPath(); ctx.ellipse(0, -size*0.04, size*0.08, size*0.06, 0, 0, TAU); ctx.fill();
-  // mouth
-  ctx.beginPath();
-  ctx.strokeStyle = '#2a3a4d';
-  ctx.lineWidth = 1.6;
-  ctx.moveTo(0, size*0.02);
-  ctx.quadraticCurveTo(-size*0.06, size*0.12, -size*0.10, size*0.10);
-  ctx.moveTo(0, size*0.02);
-  ctx.quadraticCurveTo( size*0.06, size*0.12,  size*0.10, size*0.10);
-  ctx.stroke();
-  // eyes
-  ctx.fillStyle = '#0c1422';
-  ctx.beginPath(); ctx.ellipse(-size*0.18, -size*0.22, size*0.05, size*0.07, 0, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( size*0.18, -size*0.22, size*0.05, size*0.07, 0, 0, TAU); ctx.fill();
-  // cheek blush
-  ctx.fillStyle = 'rgba(255,160,160,0.5)';
-  ctx.beginPath(); ctx.ellipse(-size*0.32, -size*0.07, size*0.09, size*0.055, 0, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( size*0.32, -size*0.07, size*0.09, size*0.055, 0, 0, TAU); ctx.fill();
+  ctx.drawImage(sprites.shirokuma, -drawSize / 2, -drawSize * 0.80, drawSize, drawSize);
   ctx.restore();
 }
 
 function drawChick(x, y, size, t, opts = {}) {
-  // floating yellow chick with flapping wings
+  if (!spriteReady(sprites.chick)) return;
   const bob = Math.sin(t * 3.6 + (opts.phase || 0)) * 4;
-  const flap = Math.sin(t * 10 + (opts.phase || 0)) * 0.6;
-  const W = size * 0.62, B = size * 0.58;
+  // sprite 256x256 was exported with drawChick(W/2, H*0.55, 96, ...)
+  // chick は ground anchor ではなく "中心 anchor" (= sprite 内 y=0.55)
+  const drawSize = size * 256 / 96;
   ctx.save();
   ctx.translate(x, y + bob);
-  // body
-  ctx.fillStyle = '#ffd84a';
-  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#b88a18';
-  ctx.lineWidth = 1.6;
-  ctx.stroke();
-  // wing
-  ctx.save();
-  ctx.translate(-W*0.4, 0);
-  ctx.rotate(-0.3 + flap);
-  ctx.fillStyle = '#ffc81a';
-  ctx.beginPath(); ctx.ellipse(0, 0, size*0.20, size*0.13, 0, 0, TAU); ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-  // beak
-  ctx.fillStyle = '#ff9d3d';
-  ctx.beginPath();
-  ctx.moveTo(W*0.85, 0);
-  ctx.lineTo(W*0.50, -size*0.06);
-  ctx.lineTo(W*0.50,  size*0.06);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // eye
-  ctx.fillStyle = '#0c1422';
-  ctx.beginPath(); ctx.arc(W*0.10, -size*0.10, size*0.045, 0, TAU); ctx.fill();
-  // cheek blush
-  ctx.fillStyle = 'rgba(255,140,140,0.55)';
-  ctx.beginPath(); ctx.ellipse(-W*0.05, size*0.05, size*0.08, size*0.045, 0, 0, TAU); ctx.fill();
-  // tiny feet hanging
-  ctx.strokeStyle = '#ff9d3d';
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(-size*0.08, B*0.85); ctx.lineTo(-size*0.08, B*1.1);
-  ctx.moveTo( size*0.08, B*0.85); ctx.lineTo( size*0.08, B*1.1);
-  ctx.stroke();
+  if (opts.flip) ctx.scale(-1, 1);
+  ctx.drawImage(sprites.chick, -drawSize / 2, -drawSize * 0.55, drawSize, drawSize);
   ctx.restore();
 }
 

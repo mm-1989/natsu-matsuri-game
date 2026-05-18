@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Sprite Export — natsu-matsuri-game</title>
+<link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&display=swap" rel="stylesheet">
+<style>
+body { font-family: monospace; background: #2a3a4d; color: #fff; padding: 20px; margin: 0; }
+h1 { font-size: 16px; opacity: 0.7; margin: 0 0 12px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 12px 0;
+}
+.cell {
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%) 0 0/16px 16px,
+    linear-gradient(-45deg, rgba(255,255,255,0.05) 25%, transparent 25%) 0 8px/16px 16px,
+    #1a2333;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+}
+.cell canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.cell .name { font-size: 11px; color: #ffd84a; margin-top: 6px; font-weight: 700; }
+.cell .size { font-size: 10px; opacity: 0.5; }
+button {
+  padding: 10px 22px;
+  background: #ffce4a;
+  color: #2a3a4d;
+  border: 2px solid #2a3a4d;
+  border-radius: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: monospace;
+}
+button:hover { background: #ffd84a; }
+.log {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 12px;
+  max-height: 200px;
+  overflow: auto;
+  background: rgba(0,0,0,0.3);
+  padding: 8px;
+  border-radius: 4px;
+  white-space: pre-line;
+}
+</style>
+</head>
+<body>
+<h1>🍧 Sprite Export — procedural を PNG 化</h1>
+<div class="grid" id="grid"></div>
+<button id="download-all">📥 Download All</button>
+<div class="log" id="log"></div>
+
+<script>
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+
+let ctx;  // 現在描画中の canvas の ctx (procedural 関数からはグローバル参照される)
+const logEl = document.getElementById('log');
+const log = (s) => { logEl.textContent += s + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+// ============ procedural 関数 (index.html からコピー) ============
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawPenguin(x, y, size, t, opts = {}) {
+  const bob   = Math.sin(t * 3 + (opts.phase || 0)) * 2;
+  const flap  = Math.sin(t * 4.5 + (opts.phase || 0)) * 0.45;
+  const W = size * 0.62, B = size * 0.85;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  // feet
+  ctx.fillStyle = '#ff9d3d';
+  ctx.beginPath(); ctx.ellipse(-size*0.20, B*0.95, size*0.20, size*0.075, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.20, B*0.95, size*0.20, size*0.075, 0, 0, TAU); ctx.fill();
+  // body
+  ctx.fillStyle = opts.bodyColor || '#243447';
+  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#0c1422';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // belly
+  ctx.fillStyle = '#fff8ec';
+  ctx.beginPath(); ctx.ellipse(0, size*0.12, W*0.66, B*0.74, 0, 0, TAU); ctx.fill();
+  // flippers
+  ctx.fillStyle = opts.bodyColor || '#243447';
+  ctx.save();
+  ctx.translate(-W*0.92, -B*0.10);
+  ctx.rotate(-0.9 + flap);
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.42, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(W*0.92, -B*0.10);
+  ctx.rotate(0.9 - flap);
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.42, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+  // eyes
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(-size*0.16, -size*0.38, size*0.13, size*0.16, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.16, -size*0.38, size*0.13, size*0.16, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#0c1422';
+  ctx.beginPath(); ctx.arc(-size*0.14, -size*0.36, size*0.065, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc( size*0.18, -size*0.36, size*0.065, 0, TAU); ctx.fill();
+  // beak
+  ctx.fillStyle = '#ff9d3d';
+  ctx.beginPath();
+  ctx.moveTo(0, -size*0.20);
+  ctx.lineTo(-size*0.11, -size*0.07);
+  ctx.lineTo( size*0.11, -size*0.07);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#a8551d';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // blush
+  ctx.fillStyle = 'rgba(255,140,140,0.55)';
+  ctx.beginPath(); ctx.ellipse(-size*0.30, -size*0.20, size*0.10, size*0.06, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.30, -size*0.20, size*0.10, size*0.06, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+function drawShirokuma(x, y, size, t, opts = {}) {
+  const bob = Math.sin(t * 2.8 + (opts.phase || 0)) * 2;
+  const W = size * 0.72, B = size * 0.82;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  if (opts.flip) ctx.scale(-1, 1);
+  // feet
+  ctx.fillStyle = '#f1e5d2';
+  ctx.beginPath(); ctx.ellipse(-size*0.24, B*0.95, size*0.20, size*0.080, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.24, B*0.95, size*0.20, size*0.080, 0, 0, TAU); ctx.fill();
+  // body
+  ctx.fillStyle = '#fffaf0';
+  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#a99a7a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // ears
+  ctx.beginPath(); ctx.arc(-W*0.55, -B*0.78, size*0.13, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc( W*0.55, -B*0.78, size*0.13, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffd1d1';
+  ctx.beginPath(); ctx.arc(-W*0.55, -B*0.76, size*0.06, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc( W*0.55, -B*0.76, size*0.06, 0, TAU); ctx.fill();
+  // arms
+  const arm = Math.sin(t * 4 + (opts.phase || 0)) * 0.3;
+  ctx.fillStyle = '#fffaf0';
+  ctx.strokeStyle = '#a99a7a';
+  ctx.save();
+  ctx.translate(-W*0.85, -B*0.05);
+  ctx.rotate(-1.1 + arm);
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.34, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(W*0.85, -B*0.05);
+  ctx.rotate(1.1 - arm);
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.34, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // muzzle
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(0, size*0.06, size*0.28, size*0.20, 0, 0, TAU); ctx.fill();
+  // nose
+  ctx.fillStyle = '#2a3a4d';
+  ctx.beginPath(); ctx.ellipse(0, -size*0.04, size*0.08, size*0.06, 0, 0, TAU); ctx.fill();
+  // mouth
+  ctx.beginPath();
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = 1.6;
+  ctx.moveTo(0, size*0.02);
+  ctx.quadraticCurveTo(-size*0.06, size*0.12, -size*0.10, size*0.10);
+  ctx.moveTo(0, size*0.02);
+  ctx.quadraticCurveTo( size*0.06, size*0.12,  size*0.10, size*0.10);
+  ctx.stroke();
+  // eyes
+  ctx.fillStyle = '#0c1422';
+  ctx.beginPath(); ctx.ellipse(-size*0.18, -size*0.22, size*0.05, size*0.07, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.18, -size*0.22, size*0.05, size*0.07, 0, 0, TAU); ctx.fill();
+  // blush
+  ctx.fillStyle = 'rgba(255,160,160,0.5)';
+  ctx.beginPath(); ctx.ellipse(-size*0.32, -size*0.07, size*0.09, size*0.055, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.32, -size*0.07, size*0.09, size*0.055, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+function drawChick(x, y, size, t, opts = {}) {
+  const bob = Math.sin(t * 3.6 + (opts.phase || 0)) * 4;
+  const flap = Math.sin(t * 10 + (opts.phase || 0)) * 0.6;
+  const W = size * 0.62, B = size * 0.58;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  // body
+  ctx.fillStyle = '#ffd84a';
+  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#b88a18';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  // wing
+  ctx.save();
+  ctx.translate(-W*0.4, 0);
+  ctx.rotate(-0.3 + flap);
+  ctx.fillStyle = '#ffc81a';
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.20, size*0.13, 0, 0, TAU); ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  // beak
+  ctx.fillStyle = '#ff9d3d';
+  ctx.beginPath();
+  ctx.moveTo(W*0.85, 0);
+  ctx.lineTo(W*0.50, -size*0.06);
+  ctx.lineTo(W*0.50,  size*0.06);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // eye
+  ctx.fillStyle = '#0c1422';
+  ctx.beginPath(); ctx.arc(W*0.10, -size*0.10, size*0.045, 0, TAU); ctx.fill();
+  // blush
+  ctx.fillStyle = 'rgba(255,140,140,0.55)';
+  ctx.beginPath(); ctx.ellipse(-W*0.05, size*0.05, size*0.08, size*0.045, 0, 0, TAU); ctx.fill();
+  // feet
+  ctx.strokeStyle = '#ff9d3d';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-size*0.08, B*0.85); ctx.lineTo(-size*0.08, B*1.1);
+  ctx.moveTo( size*0.08, B*0.85); ctx.lineTo( size*0.08, B*1.1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBowl(g) {
+  const { bowlCenterX, bowlRimY, bowlBottomY, bowlW, scale } = g;
+  const halfW = bowlW / 2;
+  const sw = Math.max(1, 3 * scale);
+
+  ctx.save();
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = sw;
+  ctx.beginPath();
+  ctx.moveTo(bowlCenterX - halfW, bowlRimY);
+  ctx.quadraticCurveTo(bowlCenterX - halfW * 1.0, bowlBottomY + 5, bowlCenterX - halfW * 0.55, bowlBottomY);
+  ctx.lineTo(bowlCenterX + halfW * 0.55, bowlBottomY);
+  ctx.quadraticCurveTo(bowlCenterX + halfW * 1.0, bowlBottomY + 5, bowlCenterX + halfW, bowlRimY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(bowlCenterX - halfW * 0.97, bowlRimY + 2);
+  ctx.quadraticCurveTo(bowlCenterX - halfW * 0.97, bowlBottomY + 4, bowlCenterX - halfW * 0.55, bowlBottomY - 2);
+  ctx.lineTo(bowlCenterX + halfW * 0.55, bowlBottomY - 2);
+  ctx.quadraticCurveTo(bowlCenterX + halfW * 0.97, bowlBottomY + 4, bowlCenterX + halfW * 0.97, bowlRimY + 2);
+  ctx.closePath();
+  ctx.clip();
+
+  ctx.fillStyle = '#dceffa';
+  ctx.fillRect(bowlCenterX - halfW, bowlRimY, bowlW, bowlBottomY - bowlRimY + 8);
+
+  ctx.strokeStyle = '#4287d6';
+  ctx.lineWidth = Math.max(0.8, 1.5 * scale);
+  ctx.globalAlpha = 0.6;
+  const waveStride = 12 * scale;
+  const waveArcW = 18 * scale;
+  const waveArcR = 9 * scale;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    const yy = bowlRimY + 8 * scale + i * waveStride;
+    for (let xx = bowlCenterX - halfW; xx <= bowlCenterX + halfW; xx += waveArcW) {
+      ctx.arc(xx, yy, waveArcR, Math.PI, 0, false);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.moveTo(bowlCenterX - halfW + 4 * scale, bowlRimY - 1);
+  ctx.lineTo(bowlCenterX + halfW - 4 * scale, bowlRimY - 1);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = Math.max(1, 2 * scale);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.ellipse(bowlCenterX, bowlRimY, halfW, 8 * scale, 0, 0, TAU);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = sw;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// drawMachine からハンドル部分を除いた版 (本体のみ)
+function drawMachineBody(g) {
+  const cx = g.machineCenterX;
+  const bottomY = g.machineBottomY;
+  const topY = g.machineTopY;
+  const s = g.scale;
+  const bodyW = 100 * s;
+  const halfW = bodyW / 2;
+
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a3a4d';
+
+  // ice block
+  const iceTopY = topY - 25 * s;
+  const iceW = 56 * s;
+  ctx.save();
+  const iceGrad = ctx.createLinearGradient(cx - iceW/2, iceTopY, cx + iceW/2, topY);
+  iceGrad.addColorStop(0, 'rgba(220,238,250,0.95)');
+  iceGrad.addColorStop(1, 'rgba(160,210,230,0.85)');
+  ctx.fillStyle = iceGrad;
+  roundRect(cx - iceW/2, iceTopY, iceW, 28 * s, 6 * s);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillRect(cx - iceW/2 + 5 * s, iceTopY + 4 * s, 4 * s, 18 * s);
+  ctx.restore();
+
+  // top dome
+  ctx.fillStyle = '#fafafa';
+  ctx.beginPath();
+  ctx.moveTo(cx - halfW, topY + 10 * s);
+  ctx.quadraticCurveTo(cx, topY - 15 * s, cx + halfW, topY + 10 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // red band
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx - halfW + 4, topY + 8 * s);
+  ctx.quadraticCurveTo(cx, topY - 12 * s, cx + halfW - 4, topY + 8 * s);
+  ctx.lineTo(cx + halfW - 4, topY + 16 * s);
+  ctx.quadraticCurveTo(cx, topY - 4 * s, cx - halfW + 4, topY + 16 * s);
+  ctx.closePath();
+  ctx.fillStyle = '#e94560';
+  ctx.fill();
+  ctx.restore();
+
+  // main body
+  ctx.fillStyle = '#fafafa';
+  roundRect(cx - halfW, topY + 10 * s, bodyW, (bottomY - topY) - 10 * s, 4 * s);
+  ctx.fill();
+  ctx.stroke();
+
+  // label panel
+  ctx.fillStyle = '#fff8e1';
+  roundRect(cx - 32 * s, topY + 40 * s, 64 * s, 36 * s, 4 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // label text
+  ctx.fillStyle = '#e94560';
+  ctx.font = `${22 * s}px 'Yusei Magic', serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('氷', cx, topY + 58 * s);
+
+  // outlet
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.fillStyle = '#3a3a3a';
+  roundRect(cx - 22 * s, bottomY - 12 * s, 44 * s, 12 * s, 3 * s);
+  ctx.fill();
+  ctx.stroke();
+
+  // foot
+  ctx.fillStyle = '#3d3d3d';
+  roundRect(cx - halfW - 4, bottomY - 2, bodyW + 8, 6 * s, 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ============ sprite 設定 ============
+
+const sprites = [
+  {
+    name: 'char-penguin', w: 256, h: 256,
+    draw: (W, H) => drawPenguin(W/2, H*0.80, 110, 0, { phase: 0 })
+  },
+  {
+    name: 'char-shirokuma', w: 256, h: 256,
+    draw: (W, H) => drawShirokuma(W/2, H*0.80, 110, 0, { phase: 0 })
+  },
+  {
+    name: 'char-chick', w: 256, h: 256,
+    draw: (W, H) => drawChick(W/2, H*0.55, 96, 0, { phase: 0 })
+  },
+  {
+    name: 'machine-body', w: 240, h: 440,
+    draw: (W, H) => {
+      // 機械本体のみ (ハンドル抜き)
+      const g = {
+        machineCenterX: W / 2,
+        machineBottomY: H - 10,
+        machineTopY:    H - 10 - 180,  // height 180
+        scale: 1.0,
+      };
+      drawMachineBody(g);
+    }
+  },
+  {
+    name: 'bowl', w: 360, h: 120,
+    draw: (W, H) => {
+      const g = {
+        bowlCenterX:  W / 2,
+        bowlBottomY:  H - 12,
+        bowlRimY:     H - 12 - 35,
+        bowlW:        280,
+        scale: 1.0,
+      };
+      drawBowl(g);
+    }
+  },
+];
+
+// ============ render ============
+
+const grid = document.getElementById('grid');
+
+function renderSprite(s) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  const cv = document.createElement('canvas');
+  cv.id = 'cv-' + s.name;
+  cv.width = s.w;
+  cv.height = s.h;
+  cell.appendChild(cv);
+  const name = document.createElement('div');
+  name.className = 'name';
+  name.textContent = s.name + '.png';
+  cell.appendChild(name);
+  const size = document.createElement('div');
+  size.className = 'size';
+  size.textContent = s.w + ' × ' + s.h;
+  cell.appendChild(size);
+  grid.appendChild(cell);
+
+  ctx = cv.getContext('2d');
+  // transparent background
+  ctx.clearRect(0, 0, s.w, s.h);
+  s.draw(s.w, s.h);
+  log('rendered ' + s.name);
+}
+
+// Yusei Magic font が読み込まれてから描画 (label "氷" のため)
+document.fonts.ready.then(() => {
+  log('fonts ready, rendering sprites...');
+  for (const s of sprites) renderSprite(s);
+  log('all sprites rendered (' + sprites.length + ')');
+});
+
+// ============ download ============
+
+document.getElementById('download-all').onclick = () => {
+  for (const s of sprites) {
+    const cv = document.getElementById('cv-' + s.name);
+    cv.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = s.name + '.png';
+      a.click();
+    }, 'image/png');
+  }
+  log('triggered download for ' + sprites.length + ' files');
+};
+
+// ============ Playwright 用 API ============
+
+window.exportSprites = async () => {
+  await document.fonts.ready;
+  // render が既に完了している前提だが、 念のため待つ
+  await new Promise(r => setTimeout(r, 200));
+  const results = {};
+  for (const s of sprites) {
+    const cv = document.getElementById('cv-' + s.name);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const buf = await blob.arrayBuffer();
+    results[s.name] = Array.from(new Uint8Array(buf));
+  }
+  return results;
+};
+</script>
+</body>
+</html>
