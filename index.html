@@ -313,6 +313,17 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   letter-spacing: 0.08em;
   animation: confirm-pulse 1.4s ease-in-out infinite;
 }
+
+/* reward mode の「できた！」ボタン — playing 中に表示、 finished へ移行する */
+.done-btn {
+  background: #80ed99;
+  color: #2a3a4d;
+  font-weight: 900;
+  font-size: 16px;
+  padding: 12px 26px;
+  letter-spacing: 0.08em;
+  animation: confirm-pulse 1.4s ease-in-out infinite;
+}
 /* During the brief lockout after eating, the button is greyed and doesn't
    pulse — so an in-flight click can't accidentally trigger a retry. */
 .reset-btn.big.locked {
@@ -595,6 +606,7 @@ button.syrup.selected:hover { transform: translate(0, 0); }
       <button class="syrup s-melon"  id="btn-melon"  onclick="pourSyrup('#6cba87')" disabled>🍈 メロン</button>
       <button class="syrup s-blue"   id="btn-blue"   onclick="pourSyrup('#4287d6')" disabled>💙 ブルー</button>
       <button class="syrup s-lemon"  id="btn-lemon"  onclick="pourSyrup('#f2c94c')" disabled>🍋 レモン</button>
+      <button class="done-btn" id="btn-done" type="button">✅ できた！</button>
       <button class="reset-btn" id="btn-reset" onclick="resetGame()">🔄 もう1回！</button>
     </div>
   </div>
@@ -2918,8 +2930,8 @@ function loop() {
   if (dt > 3) dt = 3;
   lastTime = now;
 
-  // Tick timer
-  if (state.phase === 'playing') {
+  // Tick timer — reward モードではタイマー無効 (3-5 歳向け = 焦らせない)
+  if (state.phase === 'playing' && state.mode !== 'reward') {
     state.timeLeft -= ms / 1000;
     // ⏰ During the last 5 seconds, accumulate a warning pulse used for screen shake
     if (state.timeLeft <= 5 && state.timeLeft > 0) {
@@ -3007,12 +3019,13 @@ function finishGame() {
   state.isDragging = false;
   state.lastPointerAngle = null;
   canvas.classList.remove('dragging');
+  const isReward = state.mode === 'reward';
   // Freeze the achieved height for scoring purposes
   state.frozenHeightCm = Math.round(state.pileH / 4);
   state.frozenPileH = state.pileH;
   state.frozenPileR = state.pileR;
-  // 🏔️ Save the best HEIGHT achievement (independent of score)
-  if (state.frozenHeightCm > state.bestHeight) {
+  // 🏔️ Save the best HEIGHT — reward モードでは記録しない (3-5 歳向け = 競争なし)
+  if (!isReward && state.frozenHeightCm > state.bestHeight) {
     state.bestHeight = state.frozenHeightCm;
     state.heightNewRecord = true;
     saveBestHeight(state.frozenHeightCm);
@@ -3021,15 +3034,18 @@ function finishGame() {
   ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
     document.getElementById(id).disabled = false;
   });
-  document.getElementById('hint').textContent = '⏰ TIME UP! お好みのシロップを選ぼう ♪';
-  celebrate('⏰ TIME UP!');
+  document.getElementById('hint').textContent = isReward
+    ? '🎨 シロップを えらんでね ♪'
+    : '⏰ TIME UP! お好みのシロップを選ぼう ♪';
+  celebrate(isReward ? '🎨 シロップを えらんでね' : '⏰ TIME UP!');
 
-  // ⏰ Big white flash + shockwave + slight slow-mo for cinematic punch
-  state.timeUpFlashT = 1.0;
+  // ⏰ Big white flash + shockwave + slight slow-mo — reward モードでは控えめに
+  if (!isReward) state.timeUpFlashT = 1.0;
   // 🦘 All animals leap together to celebrate the moment
   state.syncJumpT = 0.7;
-  // Burst confetti from the top to commemorate
-  for (let i = 0; i < 28; i++) {
+  // Burst confetti from the top to commemorate (reward は控えめに半分)
+  const burstCount = isReward ? 14 : 28;
+  for (let i = 0; i < burstCount; i++) {
     state.confettiBg.push({
       x: rand(W * 0.2, W * 0.8),
       y: rand(-30, 0),
@@ -3084,7 +3100,9 @@ function startCelebration() {
 function startGame() {
   state.phase = 'playing';
   state.timeLeft = GAME_DURATION;
-  document.getElementById('hint').textContent = 'ぐるぐる回そう！！ ⟳';
+  document.getElementById('hint').textContent = state.mode === 'reward'
+    ? 'すきなだけ まわしてね ♪「できた！」 ボタンで かんせい'
+    : 'ぐるぐる回そう！！ ⟳';
   updatePhaseUI();
 }
 
@@ -3183,18 +3201,29 @@ function bounceControls() {
 // Show only the buttons that make sense for the current phase
 function updatePhaseUI() {
   const phase = state.phase;
+  const isReward = state.mode === 'reward';
+
   // mode-select overlay only visible during 'mode-select' phase
   document.getElementById('mode-select').classList.toggle('hidden', phase !== 'mode-select');
 
+  // reward モードでは scoreboard を完全非表示 (3-5 歳向け = 数字なし)
+  document.querySelector('.scoreboard').style.display = isReward ? 'none' : '';
+
   const showSyrup = phase === 'finished';
   const showReset = phase === 'done';
+  const showDoneBtn = isReward && phase === 'playing';
+
   ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
     document.getElementById(id).style.display = showSyrup ? '' : 'none';
   });
   const resetBtn = document.getElementById('btn-reset');
   resetBtn.style.display = showReset ? '' : 'none';
   resetBtn.classList.toggle('big', phase === 'done');
-  const anyVisible = showSyrup || showReset;
+
+  const doneBtn = document.getElementById('btn-done');
+  doneBtn.style.display = showDoneBtn ? '' : 'none';
+
+  const anyVisible = showSyrup || showReset || showDoneBtn;
   const ctrls = document.getElementById('controls');
   ctrls.classList.toggle('hidden', !anyVisible);
   ctrls.classList.toggle('center', phase === 'done');
@@ -3246,6 +3275,12 @@ function startEating() {
   if (state.phase !== 'finished') return;
   if (!state.syrupCoating) return; // need syrup first
 
+  // reward モードでは eating フェーズなし → シロップ完了でそのまま done へ
+  if (state.mode === 'reward') {
+    finishReward();
+    return;
+  }
+
   state.phase = 'eating';
   state.eatingClicks = 0;
   state.eatingStartT = 0;
@@ -3267,6 +3302,29 @@ function startEating() {
   document.getElementById('hint').textContent =
     `🥄 連打して早食い勝負！ 残り ${state.eatingMaxClicks} 口！`;
   updatePhaseUI();
+}
+
+// reward モード専用: シロップ完了でそのまま done フェーズへ (eating skip)
+function finishReward() {
+  state.phase = 'done';
+  state.praiseLabel = 'できたね！\nおいしそう ✨';
+  document.getElementById('hint').textContent = '🎉 できた！ もう1回やる？';
+  celebrate('🎉 できたね！');
+  startCelebration();
+  state.syncJumpT = 0.8;
+  // ふんわり花火を 2 発 (record fanfare ではなく お祝い)
+  spawnFirework();
+  setTimeout(() => spawnFirework(), 350);
+  updatePhaseUI();
+  bounceControls();
+  // 「もう1回」 押下の誤射防止 lockout (challenge モード finishEating と同じ仕掛け)
+  const resetBtn = document.getElementById('btn-reset');
+  resetBtn.disabled = true;
+  resetBtn.classList.add('locked');
+  setTimeout(() => {
+    resetBtn.disabled = false;
+    resetBtn.classList.remove('locked');
+  }, 1200);
 }
 
 function eatBite(pt) {
@@ -3562,6 +3620,13 @@ function selectMode(mode) {
 document.getElementById('btn-mode-reward').addEventListener('click', () => selectMode('reward'));
 document.getElementById('btn-mode-challenge').addEventListener('click', () => selectMode('challenge'));
 
+// reward モード: 「できた！」 ボタンで finished フェーズへ (= タイマー切れの代わり)
+document.getElementById('btn-done').addEventListener('click', () => {
+  if (state.phase !== 'playing') return;
+  if (state.mode !== 'reward') return;
+  finishGame();
+});
+
 // ---------- syrup ----------
 
 // helper: shift a hex color toward white or black for highlights/shadows
@@ -3705,7 +3770,9 @@ function resetGame() {
     el.disabled = true;
     el.classList.remove('selected');
   });
-  document.getElementById('hint').textContent = 'ハンドルを回すと 30 秒のタイマー開始！';
+  document.getElementById('hint').textContent = state.mode === 'reward'
+    ? 'すきなだけ まわしてね ♪'
+    : 'ハンドルを回すと 30 秒のタイマー開始！';
   updatePhaseUI();
 }
 
