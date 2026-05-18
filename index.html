@@ -436,6 +436,99 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   .best-stack .unit { font-size: 8px; }
   button { padding: 8px 12px; font-size: 12px; }
 }
+
+/* ---------- mode-select overlay ---------- */
+/* Sits on top of the canvas inside .canvas-wrap. Big tap targets for kids. */
+.mode-select {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 50% 0%, #fff6d9 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255,248,232,0.94), rgba(255,235,210,0.94));
+  backdrop-filter: blur(4px);
+  z-index: 11;
+  padding: 28px 18px;
+}
+.mode-select.hidden { display: none; }
+
+.ms-title {
+  font-family: 'Yusei Magic', serif;
+  font-size: clamp(24px, 6vw, 32px);
+  color: var(--ice-deep);
+  text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(95,168,196,0.25);
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 0;
+}
+
+.ms-buttons {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ms-btn {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-weight: 900;
+  width: clamp(140px, 38vw, 170px);
+  min-height: 170px;
+  padding: 18px 12px;
+  border: 4px solid var(--ink);
+  border-radius: 22px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.08s, box-shadow 0.08s;
+  letter-spacing: 0.04em;
+}
+.ms-btn:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); }
+.ms-btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+
+.ms-btn .ms-emoji {
+  font-size: 44px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.ms-btn .ms-label {
+  font-size: 22px;
+  font-weight: 900;
+}
+.ms-btn .ms-desc {
+  font-family: 'DotGothic16', monospace;
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 0.1em;
+}
+
+.ms-reward    { background: #c6f5d6; }
+.ms-challenge { background: #ffd9a3; }
+
+.ms-hint {
+  font-family: 'DotGothic16', monospace;
+  font-size: 11px;
+  color: var(--ink);
+  opacity: 0.6;
+  text-align: center;
+  letter-spacing: 0.15em;
+}
+
+@media (max-width: 420px) {
+  .ms-btn { width: 42vw; min-height: 150px; }
+  .ms-btn .ms-emoji { font-size: 36px; }
+  .ms-btn .ms-label { font-size: 18px; }
+}
 </style>
 </head>
 <body>
@@ -481,6 +574,22 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   <div class="canvas-wrap">
     <canvas id="game"></canvas>
     <div class="celebrate" id="celebrate"></div>
+    <div class="mode-select hidden" id="mode-select">
+      <h2 class="ms-title">どっちで あそぶ？</h2>
+      <div class="ms-buttons">
+        <button class="ms-btn ms-reward" type="button" id="btn-mode-reward">
+          <span class="ms-emoji">🍧</span>
+          <span class="ms-label">ごほうび</span>
+          <span class="ms-desc">じっくり つくる</span>
+        </button>
+        <button class="ms-btn ms-challenge" type="button" id="btn-mode-challenge">
+          <span class="ms-emoji">⏱️</span>
+          <span class="ms-label">チャレンジ</span>
+          <span class="ms-desc">30びょうで おおきく</span>
+        </button>
+      </div>
+      <div class="ms-hint">えらんで タップしてね</div>
+    </div>
     <div class="controls" id="controls">
       <button class="syrup s-ichigo" id="btn-ichigo" onclick="pourSyrup('#e94560')" disabled>🍓 いちご</button>
       <button class="syrup s-melon"  id="btn-melon"  onclick="pourSyrup('#6cba87')" disabled>🍈 メロン</button>
@@ -536,7 +645,9 @@ const state = {
   cameraScale: 1,
   lastSpawnTime: 0,
   // timer
-  phase: 'title',         // 'title' | 'ready' | 'playing' | 'finished' | 'eating' | 'done'
+  phase: 'title',         // 'title' | 'mode-select' | 'ready' | 'playing' | 'finished' | 'eating' | 'done'
+  mode: null,             // 'reward' | 'challenge' — set after the player picks on mode-select.
+                          // M1.2: both modes share the same behaviour; M1.3 splits reward mode.
   timeLeft: GAME_DURATION,
   titleT: 0,              // animation timer for opening screen
   bgAnimals: [],          // animals scurrying around in the background
@@ -3072,6 +3183,9 @@ function bounceControls() {
 // Show only the buttons that make sense for the current phase
 function updatePhaseUI() {
   const phase = state.phase;
+  // mode-select overlay only visible during 'mode-select' phase
+  document.getElementById('mode-select').classList.toggle('hidden', phase !== 'mode-select');
+
   const showSyrup = phase === 'finished';
   const showReset = phase === 'done';
   ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
@@ -3090,12 +3204,17 @@ function updatePhaseUI() {
 
 // ---------- input ----------
 function pointerDown(e) {
-  // TITLE: any tap dismisses the opening screen and lets the player start
+  // TITLE: tap → mode-select screen
   if (state.phase === 'title') {
     e.preventDefault();
-    state.phase = 'ready';
-    document.getElementById('hint').textContent = 'ハンドルをグルグル回そう！⟳';
+    state.phase = 'mode-select';
+    document.getElementById('hint').textContent = 'モードを えらんでね';
     updatePhaseUI();
+    return;
+  }
+  // MODE-SELECT: ignore taps on the canvas — the player must use the buttons
+  if (state.phase === 'mode-select') {
+    e.preventDefault();
     return;
   }
   // EATING: any canvas click = one bite
@@ -3432,6 +3551,16 @@ canvas.addEventListener('touchstart', pointerDown, { passive: false });
 window.addEventListener('touchmove', pointerMove, { passive: false });
 window.addEventListener('touchend', pointerUp);
 window.addEventListener('touchcancel', pointerUp);
+
+// ---------- mode select ----------
+function selectMode(mode) {
+  state.mode = mode;
+  state.phase = 'ready';
+  document.getElementById('hint').textContent = 'ハンドルを グルグル まわそう！⟳';
+  updatePhaseUI();
+}
+document.getElementById('btn-mode-reward').addEventListener('click', () => selectMode('reward'));
+document.getElementById('btn-mode-challenge').addEventListener('click', () => selectMode('challenge'));
 
 // ---------- syrup ----------
 
