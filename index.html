@@ -1,0 +1,3590 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ふわふわ かき氷チャレンジ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-1: #fff4dc;
+  --bg-2: #ffe1d0;
+  --ink: #2a3a4d;
+  --ice-deep: #3d7896;
+  --ice-mid: #b8dce8;
+  --ice-light: #f0faff;
+  --machine: #fafafa;
+  --machine-shadow: #d8d4c4;
+  --accent: #e94560;
+  --bamboo: #8b5e3c;
+  --bamboo-light: #c89668;
+  --gold: #d4a44a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body { overscroll-behavior: none; }
+
+body {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-weight: 500;
+  background:
+    radial-gradient(ellipse at 85% 10%, #fff8d4 0%, transparent 45%),
+    radial-gradient(ellipse at 10% 90%, #ffd9e8 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ink);
+  padding: 18px 14px 30px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* paper texture overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(45deg, transparent 0 60px, rgba(255,255,255,0.25) 60px 61px),
+    repeating-linear-gradient(-45deg, transparent 0 60px, rgba(184,220,232,0.18) 60px 61px);
+  z-index: 0;
+}
+
+/* floating snowflakes */
+.flake {
+  position: fixed;
+  color: rgba(95, 168, 196, 0.35);
+  pointer-events: none;
+  font-size: 16px;
+  z-index: 0;
+  animation: drift 14s linear infinite;
+}
+@keyframes drift {
+  0% { transform: translateY(-30px) rotate(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+.title-wrap {
+  text-align: center;
+  z-index: 1;
+  position: relative;
+  margin-bottom: 6px;
+}
+
+h1 {
+  font-family: 'Yusei Magic', serif;
+  font-size: clamp(30px, 6.5vw, 46px);
+  color: var(--ice-deep);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-shadow:
+    3px 3px 0 #fff,
+    6px 6px 0 rgba(95,168,196,0.25);
+  transform: rotate(-1.5deg);
+  display: inline-block;
+}
+
+h1 .accent { color: var(--accent); }
+
+.subtitle {
+  font-family: 'DotGothic16', monospace;
+  font-size: 11px;
+  color: var(--ice-deep);
+  opacity: 0.75;
+  margin-top: 10px;
+  letter-spacing: 0.25em;
+  z-index: 1;
+}
+
+.game-wrap {
+  position: relative;
+  width: min(100%, 460px);
+  z-index: 1;
+  margin-top: 14px;
+}
+
+.scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  padding: 10px 4px;
+  margin-bottom: 12px;
+  box-shadow: 4px 4px 0 var(--ink);
+  position: relative;
+}
+
+.score-item {
+  text-align: center;
+  position: relative;
+}
+
+.score-item + .score-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 15%;
+  height: 70%;
+  width: 2px;
+  background: var(--ink);
+  opacity: 0.15;
+}
+
+.score-label {
+  font-family: 'DotGothic16', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  opacity: 0.55;
+  margin-bottom: 2px;
+}
+
+.score-value {
+  font-family: 'Yusei Magic', serif;
+  font-size: 22px;
+  color: var(--ice-deep);
+  line-height: 1;
+}
+
+.score-value .unit {
+  font-size: 11px;
+  margin-left: 1px;
+  opacity: 0.7;
+}
+
+.score-item.best .score-value { color: var(--accent); }
+.score-item.best.recording {
+  animation: best-flash 0.6s ease-out 4;
+}
+@keyframes best-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(255,206,74,0.7); }
+  50%  { box-shadow: 0 0 0 14px rgba(255,206,74,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,206,74,0); }
+}
+
+.best-stack {
+  font-family: 'Yusei Magic', serif;
+  color: var(--accent);
+  line-height: 1.15;
+}
+.best-stack .best-row {
+  font-size: 15px;
+  white-space: nowrap;
+}
+.best-stack .best-row.score {
+  font-weight: 900;
+  font-size: 17px;
+}
+.best-stack .unit {
+  font-size: 9px;
+  margin-left: 1px;
+  opacity: 0.7;
+}
+
+.score-item.time .score-value { color: #2a3a4d; }
+.score-item.time.urgent .score-value {
+  color: var(--accent);
+  animation: pulse-urgent 0.45s ease-in-out infinite alternate;
+  text-shadow: 0 0 6px rgba(255,94,122,0.6);
+}
+.score-item.time.urgent {
+  animation: time-shake 0.45s ease-in-out infinite alternate;
+}
+.score-item.time.done .score-value {
+  color: var(--accent);
+  opacity: 0.55;
+}
+@keyframes pulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.12); }
+}
+@keyframes pulse-urgent {
+  from { transform: scale(1);    color: var(--accent); }
+  to   { transform: scale(1.20); color: #ff2a5a; }
+}
+@keyframes time-shake {
+  from { transform: translateX(-1px); }
+  to   { transform: translateX(1px); }
+}
+
+/* Best record progress bars — show how close current is to the personal best */
+.best-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(42,58,77,0.15);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.best-bar .best-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd84a, #ff5e7a);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.3s ease-out;
+}
+.best-bar .best-bar-fill.maxed {
+  background: linear-gradient(90deg, #ffd84a, #6cba87, #4287d6, #ff5e7a);
+  animation: rainbow-shift 1.6s linear infinite;
+  background-size: 200% 100%;
+}
+@keyframes rainbow-shift {
+  from { background-position: 0% 50%; }
+  to   { background-position: 200% 50%; }
+}
+
+.score-item.flash .score-value {
+  animation: rot-flash 0.45s ease-out;
+}
+@keyframes rot-flash {
+  0%   { transform: scale(1);   color: var(--ice-deep); }
+  30%  { transform: scale(1.32); color: #ff9d3d; }
+  100% { transform: scale(1);   color: var(--ice-deep); }
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 560px;
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg,
+      #d8ecf5 0%,
+      #f3e9d4 65%,
+      #e6d4b6 100%);
+  box-shadow: 4px 4px 0 var(--ink);
+  touch-action: none;
+  cursor: grab;
+}
+canvas.dragging { cursor: grabbing; }
+canvas.eating { cursor: pointer; }
+
+button {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-weight: 700;
+  padding: 9px 16px;
+  border: 2.5px solid var(--ink);
+  border-radius: 25px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform 0.08s, box-shadow 0.08s;
+  font-size: 13px;
+}
+button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+
+button.syrup { color: #fff; }
+button.s-ichigo { background: #e94560; }
+button.s-melon  { background: #6cba87; }
+button.s-blue   { background: #4287d6; }
+button.s-lemon  { background: #f2c94c; color: var(--ink); }
+
+button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+button:disabled:hover { transform: none; box-shadow: 2px 2px 0 var(--ink); }
+
+button.syrup.selected {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 var(--ink), 0 0 0 3px #fff, 0 0 0 5px var(--ink);
+}
+button.syrup.selected:hover { transform: translate(0, 0); }
+
+.reset-btn.big {
+  background: #ffce4a;
+  color: #2a3a4d;
+  font-weight: 900;
+  font-size: 16px;
+  padding: 12px 26px;
+  letter-spacing: 0.08em;
+  animation: confirm-pulse 1.4s ease-in-out infinite;
+}
+/* During the brief lockout after eating, the button is greyed and doesn't
+   pulse — so an in-flight click can't accidentally trigger a retry. */
+.reset-btn.big.locked {
+  background: #d8d3c2;
+  color: #8a8676;
+  cursor: not-allowed;
+  animation: none;
+  box-shadow: 3px 3px 0 #2a3a4d;
+}
+@keyframes confirm-pulse {
+  0%, 100% {
+    transform: translate(0, 0);
+    box-shadow: 3px 3px 0 var(--ink), 0 0 0 0 rgba(255,206,74,0.55);
+  }
+  50% {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--ink), 0 0 0 8px rgba(255,206,74,0.0);
+  }
+}
+
+.hint {
+  font-family: 'DotGothic16', monospace;
+  font-size: 11px;
+  text-align: center;
+  margin-top: 12px;
+  color: var(--ink);
+  opacity: 0.6;
+  letter-spacing: 0.15em;
+}
+
+.canvas-wrap {
+  position: relative;
+}
+
+.controls {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+  background: rgba(255, 250, 235, 0.95);
+  border: 3px solid var(--ink);
+  border-radius: 32px;
+  padding: 8px 14px;
+  box-shadow: 4px 4px 0 var(--ink);
+  z-index: 6;
+  max-width: 92%;
+  backdrop-filter: blur(4px);
+}
+.controls.hidden { display: none; }
+.controls.center {
+  bottom: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Hide temporarily so the next-step UI feels like a fresh appearance */
+.controls.hide-temp {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+/* Bouncy entrance to grab attention when 食べる becomes available */
+.controls.reveal {
+  animation: pill-reveal 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.controls.center.reveal {
+  animation: pill-reveal-center 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pill-reveal {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(50px) scale(0.55); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes pill-reveal-center {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.45); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.celebrate {
+  position: absolute;
+  top: 38%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: 'Yusei Magic', serif;
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--accent);
+  padding: 14px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 10;
+  letter-spacing: 0.04em;
+  text-shadow:
+    3px 3px 0 #fff, -3px 3px 0 #fff, 3px -3px 0 #fff, -3px -3px 0 #fff,
+    0 3px 0 #fff, 3px 0 0 #fff, 0 -3px 0 #fff, -3px 0 0 #fff,
+    6px 6px 0 rgba(42,58,77,0.40),
+    0 0 20px rgba(255,206,74,0.8);
+}
+.celebrate.show { animation: pop 1.8s cubic-bezier(.34,1.56,.64,1); }
+@keyframes pop {
+  0%   { opacity: 0; transform: scale(0.3) translateY(-30px) rotate(-8deg); }
+  15%  { opacity: 1; transform: scale(1.25) translateY(0) rotate(2deg); }
+  25%  { transform: scale(0.92) rotate(-2deg); }
+  35%  { transform: scale(1.05) rotate(1deg); }
+  45%  { transform: scale(1) rotate(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.05) translateY(-15px); }
+}
+
+@media (max-width: 420px) {
+  canvas { height: 500px; }
+  .score-value { font-size: 17px; }
+  .score-label { font-size: 9px; letter-spacing: 0.1em; }
+  .score-value .unit { font-size: 10px; }
+  .best-stack .best-row { font-size: 13px; }
+  .best-stack .best-row.score { font-size: 15px; }
+  .best-stack .unit { font-size: 8px; }
+  button { padding: 8px 12px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- snowflakes -->
+<div class="flake" style="left:5%; animation-delay:0s;">❄</div>
+<div class="flake" style="left:18%; animation-delay:3s;">✦</div>
+<div class="flake" style="left:32%; animation-delay:6s; font-size:12px;">❄</div>
+<div class="flake" style="left:55%; animation-delay:1s; font-size:20px;">✦</div>
+<div class="flake" style="left:72%; animation-delay:8s;">❄</div>
+<div class="flake" style="left:88%; animation-delay:4s; font-size:14px;">✦</div>
+
+<div class="title-wrap">
+  <h1>ふわふわ <span class="accent">かき氷</span></h1>
+  <div class="subtitle">⟳ CRANK THE HANDLE · BUILD THE MOUNTAIN ⟲</div>
+</div>
+
+<div class="game-wrap">
+  <div class="scoreboard">
+    <div class="score-item">
+      <div class="score-label">HEIGHT</div>
+      <div class="score-value" id="height">0<span class="unit">m</span></div>
+    </div>
+    <div class="score-item time" id="time-item">
+      <div class="score-label">TIME</div>
+      <div class="score-value" id="time">30<span class="unit">s</span></div>
+    </div>
+    <div class="score-item" id="rot-item">
+      <div class="score-label">ROTATIONS</div>
+      <div class="score-value" id="rotations">0</div>
+    </div>
+    <div class="score-item best">
+      <div class="score-label">★ BEST</div>
+      <div class="best-stack">
+        <div class="best-row"><span id="best-height">0</span><span class="unit">m</span></div>
+        <div class="best-bar"><div class="best-bar-fill" id="best-height-bar"></div></div>
+        <div class="best-row score"><span id="best-score">0</span><span class="unit">pt</span></div>
+        <div class="best-bar"><div class="best-bar-fill" id="best-score-bar"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="game"></canvas>
+    <div class="celebrate" id="celebrate"></div>
+    <div class="controls" id="controls">
+      <button class="syrup s-ichigo" id="btn-ichigo" onclick="pourSyrup('#e94560')" disabled>🍓 いちご</button>
+      <button class="syrup s-melon"  id="btn-melon"  onclick="pourSyrup('#6cba87')" disabled>🍈 メロン</button>
+      <button class="syrup s-blue"   id="btn-blue"   onclick="pourSyrup('#4287d6')" disabled>💙 ブルー</button>
+      <button class="syrup s-lemon"  id="btn-lemon"  onclick="pourSyrup('#f2c94c')" disabled>🍋 レモン</button>
+      <button class="reset-btn" id="btn-reset" onclick="resetGame()">🔄 もう1回！</button>
+    </div>
+  </div>
+
+  <p class="hint" id="hint">画面をクリックしてゲームスタート！</p>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width  = Math.round(rect.width * DPR);
+  canvas.height = Math.round(rect.height * DPR);
+  W = rect.width;
+  H = rect.height;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // canvas-relative entities need recomputing on size change
+  initBgAnimals();
+  initLanterns();
+  initClouds();
+}
+
+// ---------- state ----------
+const GAME_DURATION = 30; // seconds
+
+const state = {
+  shavings: 0,
+  rotations: 0,
+  totalRad: 0,            // total absolute radians turned
+  handleAngle: 0,         // current visual rotation of handle/crank
+  lastPointerAngle: null,
+  isDragging: false,
+  particles: [],          // ice particles flying out of machine
+  syrupDrops: [],         // bouncing splash droplets (visual flair during pour)
+  syrupCoating: null,     // { color, drips:[], progress, durationFrames }
+  pileH: 0,               // current pile height in pixels (world units)
+  pileR: 0,               // current pile radius
+  best: 0,
+  newRecord: false,
+  heightNewRecord: false,
+  scoreNewRecord: false,
+  fluff: [],              // visual fluff bumps on the pile surface
+  shakeT: 0,
+  cameraScale: 1,
+  lastSpawnTime: 0,
+  // timer
+  phase: 'title',         // 'title' | 'ready' | 'playing' | 'finished' | 'eating' | 'done'
+  timeLeft: GAME_DURATION,
+  titleT: 0,              // animation timer for opening screen
+  bgAnimals: [],          // animals scurrying around in the background
+  // 🐧 animal reactions
+  animalExcitement: 0,    // 0..1 — drives bgAnimal hop frequency/height
+  syncJumpT: 0,           // > 0 → all animals jump together (cheer event)
+  // ✨ pile sparkles
+  pileSparkles: [],       // [{x, y, size, life, max}]
+  // ⏰ last-5-second tension + TIME UP slow-mo flash
+  timeUpFlashT: 0,        // > 0 → big white-flash + slight slow-mo
+  warningPulseT: 0,       // accumulates during last 5s for screen pulse
+  // 🔥 eating combo
+  comboCount: 0,
+  comboLastT: 0,
+  comboBest: 0,
+  comboCelebrateT: 0,     // > 0 → big "COMBO ×N" text on screen
+  comboCelebrateN: 0,     // which combo milestone to display
+  // 🏮 festival decorations
+  lanterns: [],           // [{x, y, color, phase}]
+  confettiBg: [],         // [{x, y, vx, vy, rot, vrot, color, size}]
+  // ☁️ drifting clouds
+  clouds: [],             // [{x, y, size, speed}]
+  // 🎓 first-time hint
+  readyHintT: 0,          // seconds in ready phase (used to fade out hint)
+  // 🎆 fireworks for new records
+  fireworks: [],          // [{x,y,age,max,color,pieces}]
+  recordFlashT: 0,        // > 0 → full-screen rainbow flash
+  // eating
+  eatingClicks: 0,
+  eatingMaxClicks: 15,
+  eatingStartT: 0,
+  eatingElapsed: 0,
+  eatingLiveMult: 1,
+  frozenHeightCm: 0,
+  frozenPileH: 0,
+  frozenPileR: 0,
+  targetPileH: 0,
+  targetPileR: 0,
+  finalMultiplier: 1,
+  finalScore: 0,
+  bestScore: 0,
+  bestHeight: 0,
+  multBadgePulse: 0,
+  chompFx: [],            // [{x,y,life,word}] - bite hit indicators
+  rotationFx: [],         // [{life}] - rotation bonus indicator near machine
+  transitionT: 0,         // seconds remaining of step-change transition
+  // celebration
+  celebrating: false,
+  celebrationT: 0,        // seconds since celebration began
+  celebrationZoom: 1,     // multiplier on camera scale during reveal
+  characters: [],         // {type, baseX, baseY, entryT, bobPhase}
+  sparkles: [],           // {x, y, phase, size}
+  praiseLabel: '',
+};
+
+// ---------- best score persistence ----------
+// In a Claude Artifact sandbox, window.storage is provided. In any other
+// environment (Claude Code, local file, normal hosting) it doesn't exist —
+// fall back to localStorage so the file is fully portable.
+const _hasArtifactStorage = typeof window !== 'undefined'
+  && window.storage
+  && typeof window.storage.get === 'function';
+
+async function _readKey(key) {
+  if (_hasArtifactStorage) {
+    try {
+      const r = await window.storage.get(key);
+      return (r && r.value) ? r.value : null;
+    } catch(e) { return null; }
+  }
+  try { return localStorage.getItem(key); } catch(e) { return null; }
+}
+async function _writeKey(key, val) {
+  if (_hasArtifactStorage) {
+    try { await window.storage.set(key, String(val)); } catch(e) {}
+    return;
+  }
+  try { localStorage.setItem(key, String(val)); } catch(e) {}
+}
+
+async function loadBest() {
+  const sScore  = await _readKey('kakigori-best-score');
+  const sHeight = await _readKey('kakigori-best-height');
+  if (sScore)  state.bestScore  = parseFloat(sScore)  || 0;
+  if (sHeight) state.bestHeight = parseFloat(sHeight) || 0;
+  updateScoreUI();
+}
+async function saveBestScore(val)  { await _writeKey('kakigori-best-score',  val); }
+async function saveBestHeight(val) { await _writeKey('kakigori-best-height', val); }
+loadBest();
+
+// ---------- helpers ----------
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function getPointer(e) {
+  const rect = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return {
+    x: t.clientX - rect.left,
+    y: t.clientY - rect.top
+  };
+}
+
+// ---------- machine geometry ----------
+// Returns positions of machine, handle pivot/tip, outlet, bowl
+// Everything is in screen-canvas units, accounting for camera scale.
+function geometry() {
+  // World units: bowl height 35, machine height 180, gap 30, all scaled uniformly.
+  const bowlBottomY = H - 40;
+  const bowlCenterX = W * 0.45;
+  const baseBowlW = Math.min(W * 0.7, 280);
+  const baseBowlH = 35;
+  const machineHeight = 180;
+  const gap = 30;
+
+  // Camera: total world height (bowl + pile + gap + machine) must fit between
+  // bowlBottomY and minTop. Compute uniform scale once and apply to everything.
+  const minTop = 12;
+  const availH = bowlBottomY - minTop;
+  const worldH = baseBowlH + state.pileH + gap + machineHeight;
+  let scale = Math.min(1, availH / worldH);
+  scale = clamp(scale, 0.18, 1);
+
+  // During celebration, animate an extra pull-back to frame the whole scene
+  if (state.celebrating) {
+    // celebrationZoom eases from 1.0 down toward 0.72 over ~0.7s
+    state.celebrationZoom += (0.72 - state.celebrationZoom) * 0.06;
+  } else if (state.celebrationZoom < 0.999) {
+    state.celebrationZoom += (1.0 - state.celebrationZoom) * 0.12;
+  }
+  scale *= state.celebrationZoom;
+  state.cameraScale = scale;
+
+  // Apply scale uniformly — bowl, pile, gap, machine all shrink together
+  const bowlW = baseBowlW * scale;
+  const bowlRimY = bowlBottomY - baseBowlH * scale;
+  const pileTopY = bowlRimY - state.pileH * scale;
+  const machineBottomY = pileTopY - gap * scale;
+  const machineTopY = machineBottomY - machineHeight * scale;
+  const machineCenterX = bowlCenterX;
+
+  // handle: arm extends from right side of machine
+  const handlePivotX = machineCenterX + 65 * scale;
+  const handlePivotY = machineBottomY - 80 * scale;
+  const armLen = 38 * scale;
+
+  return {
+    bowlBottomY, bowlRimY, bowlCenterX, bowlW,
+    machineTopY, machineBottomY, machineCenterX, machineHeight: machineHeight * scale,
+    handlePivotX, handlePivotY, armLen,
+    pileTopY,
+    scale
+  };
+}
+
+// ---------- spawn ice ----------
+function spawnShavings(amount, fromAngle) {
+  const g = geometry();
+  const outletX = g.machineCenterX;
+  const outletY = g.machineBottomY - 4 * g.scale;
+  for (let i = 0; i < amount; i++) {
+    const angle = rand(-0.4, 0.4) + Math.PI / 2; // mostly downward
+    const speed = rand(1.2, 2.4);
+    state.particles.push({
+      x: outletX + rand(-14, 14) * g.scale,
+      y: outletY,
+      vx: Math.cos(angle) * speed * rand(-0.6, 0.6),
+      vy: Math.sin(angle) * speed,
+      size: rand(2.5, 5),
+      rot: rand(0, TAU),
+      vrot: rand(-0.3, 0.3),
+      tilt: rand(0.6, 1.4),
+      life: 0,
+    });
+  }
+}
+
+// ---------- pile shape ----------
+// taller-and-narrower growth so the pile reads as "mountain"
+// (sqrt height, cube-root-ish width)
+function updatePile() {
+  const s = state.shavings;
+  state.pileH = Math.sqrt(s) * 6.5;
+  state.pileR = Math.pow(s, 0.30) * 8 + 30;
+}
+
+// ---------- particles update ----------
+function updateParticles(dt) {
+  const g = geometry();
+  const survivors = [];
+  for (const p of state.particles) {
+    p.vy += 0.18 * dt;       // gravity
+    p.vx *= 0.995;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.rot += p.vrot * dt;
+    p.life += dt;
+
+    // bite particles fly off — no landing test, just expire
+    if (p.isBite) {
+      if (p.life > 70 || p.y > H + 60 || p.y < -60 || p.x < -60 || p.x > W + 60) continue;
+      survivors.push(p);
+      continue;
+    }
+
+    // landing test: if reaches the pile profile, settle (cranking phase)
+    const dx = (p.x - g.bowlCenterX);
+    const r = state.pileR * g.scale;
+    let surfaceY = g.bowlRimY;
+    if (r > 1 && Math.abs(dx) < r) {
+      const nx = dx / r;
+      const domeH = state.pileH * g.scale;
+      surfaceY = g.bowlRimY - domeH * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+    }
+
+    if (p.y >= surfaceY - 1) {
+      // only accumulate during the playing phase
+      const bowlReach = g.bowlW * 0.5 + 30 * g.scale;
+      if (state.phase === 'playing' && Math.abs(dx) < bowlReach) {
+        state.shavings += 1;
+        updatePile();
+        addFluff(p.x, p.y);
+      }
+      continue;
+    }
+    if (p.life > 360 || p.y > H + 50) continue;
+    survivors.push(p);
+  }
+  state.particles = survivors;
+
+  // syrup coating reveal animation
+  if (state.syrupCoating && state.syrupCoating.progress < 1) {
+    state.syrupCoating.progress = Math.min(
+      1,
+      state.syrupCoating.progress + dt / state.syrupCoating.durationFrames
+    );
+  }
+
+  // eating phase: lerp pile down toward target size & tick live elapsed
+  if (state.phase === 'eating' || state.phase === 'done') {
+    state.pileH += (state.targetPileH - state.pileH) * 0.22;
+    state.pileR += (state.targetPileR - state.pileR) * 0.22;
+    if (state.pileH < 0.5) state.pileH = 0;
+    if (state.pileR < 0.5) state.pileR = 0;
+    // live elapsed counter while still chewing
+    if (state.phase === 'eating' && state.eatingStartT > 0) {
+      state.eatingElapsed = (performance.now() - state.eatingStartT) / 1000;
+      // live multiplier preview
+      const cps = state.eatingClicks / Math.max(0.2, state.eatingElapsed);
+      state.eatingLiveMult = clamp(0.7 + cps * 0.3, 1.0, 5.0);
+    }
+  }
+  // multiplier badge pulse decay
+  if (state.multBadgePulse > 0) state.multBadgePulse = Math.max(0, state.multBadgePulse - 0.07 * dt);
+  // chomp FX age + cleanup
+  if (state.chompFx.length) {
+    for (const fx of state.chompFx) fx.life += dt;
+    state.chompFx = state.chompFx.filter(fx => fx.life < 32);
+  }
+  // rotation bonus FX
+  if (state.rotationFx.length) {
+    for (const fx of state.rotationFx) fx.life += dt;
+    state.rotationFx = state.rotationFx.filter(fx => fx.life < 36);
+  }
+}
+
+function spawnRotationBonusFx() {
+  if (state.rotationFx.length > 3) state.rotationFx.shift();
+  state.rotationFx.push({ life: 0 });
+}
+
+function addFluff(x, y) {
+  // limit count
+  if (state.fluff.length > 220) state.fluff.shift();
+  state.fluff.push({
+    x, y,
+    r: rand(4, 9),
+    a: rand(0.4, 0.85),
+    born: performance.now(),
+    settled: false,
+  });
+  // 💨 occasional dust puff sparkle on landing (frosty splash)
+  if (Math.random() < 0.18) {
+    state.pileSparkles.push({
+      x: x + rand(-3, 3),
+      y: y + rand(-3, 0),
+      size: rand(3, 5.5),
+      life: 0,
+      max: rand(18, 28),
+      color: '#ffffff',
+    });
+  }
+}
+
+// ---------- drawing ----------
+function drawBowl(g) {
+  const { bowlCenterX, bowlRimY, bowlBottomY, bowlW, scale } = g;
+  const halfW = bowlW / 2;
+  const sw = Math.max(1, 3 * scale); // scaled stroke width
+
+  ctx.save();
+  // bowl body
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = sw;
+  ctx.beginPath();
+  ctx.moveTo(bowlCenterX - halfW, bowlRimY);
+  ctx.quadraticCurveTo(bowlCenterX - halfW * 1.0, bowlBottomY + 5, bowlCenterX - halfW * 0.55, bowlBottomY);
+  ctx.lineTo(bowlCenterX + halfW * 0.55, bowlBottomY);
+  ctx.quadraticCurveTo(bowlCenterX + halfW * 1.0, bowlBottomY + 5, bowlCenterX + halfW, bowlRimY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // pattern: traditional seigaiha-ish waves in blue
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(bowlCenterX - halfW * 0.97, bowlRimY + 2);
+  ctx.quadraticCurveTo(bowlCenterX - halfW * 0.97, bowlBottomY + 4, bowlCenterX - halfW * 0.55, bowlBottomY - 2);
+  ctx.lineTo(bowlCenterX + halfW * 0.55, bowlBottomY - 2);
+  ctx.quadraticCurveTo(bowlCenterX + halfW * 0.97, bowlBottomY + 4, bowlCenterX + halfW * 0.97, bowlRimY + 2);
+  ctx.closePath();
+  ctx.clip();
+
+  ctx.fillStyle = '#dceffa';
+  ctx.fillRect(bowlCenterX - halfW, bowlRimY, bowlW, bowlBottomY - bowlRimY + 8);
+
+  // wave bands
+  ctx.strokeStyle = '#4287d6';
+  ctx.lineWidth = Math.max(0.8, 1.5 * scale);
+  ctx.globalAlpha = 0.6;
+  const waveStride = 12 * scale;
+  const waveArcW = 18 * scale;
+  const waveArcR = 9 * scale;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    const yy = bowlRimY + 8 * scale + i * waveStride;
+    for (let xx = bowlCenterX - halfW; xx <= bowlCenterX + halfW; xx += waveArcW) {
+      ctx.arc(xx, yy, waveArcR, Math.PI, 0, false);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // rim highlight
+  ctx.beginPath();
+  ctx.moveTo(bowlCenterX - halfW + 4 * scale, bowlRimY - 1);
+  ctx.lineTo(bowlCenterX + halfW - 4 * scale, bowlRimY - 1);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = Math.max(1, 2 * scale);
+  ctx.stroke();
+
+  // bowl rim
+  ctx.beginPath();
+  ctx.ellipse(bowlCenterX, bowlRimY, halfW, 8 * scale, 0, 0, TAU);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = sw;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPile(g) {
+  if (state.pileH < 1) return;
+  const r = state.pileR * g.scale;
+  const h = state.pileH * g.scale;
+  const cx = g.bowlCenterX;
+  const baseY = g.bowlRimY;
+
+  // pile silhouette: smooth cosine dome with subtle wobble
+  const wobble = state.shakeT > 0 ? Math.sin(performance.now() * 0.03) * 1.5 : 0;
+
+  ctx.save();
+  ctx.translate(wobble, 0);
+
+  // soft shadow under pile inside bowl
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, baseY + 4, r * 0.85, 6, 0, 0, TAU);
+  ctx.fillStyle = 'rgba(95, 168, 196, 0.25)';
+  ctx.fill();
+  ctx.restore();
+
+  // pile body
+  const grad = ctx.createLinearGradient(cx, baseY - h, cx, baseY);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.55, '#f3faff');
+  grad.addColorStop(1, '#c8e0e8');
+
+  ctx.beginPath();
+  ctx.moveTo(cx - r, baseY);
+  for (let x = -r; x <= r; x += 2) {
+    const nx = x / r;
+    const y = baseY - h * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+    ctx.lineTo(cx + x, y);
+  }
+  ctx.lineTo(cx + r, baseY);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = '#9bc4d4';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // (syrup coating is drawn separately so it sits on top of fluff)
+
+  // fluff bumps for texture (small white circles on top)
+  const now = performance.now();
+  for (const f of state.fluff) {
+    // settle the fluff onto the pile surface gradually
+    if (!f.settled) {
+      // map current position to nearest pile surface
+      const dx = f.x - cx;
+      if (Math.abs(dx) < r) {
+        const nx = dx / r;
+        const surfY = baseY - h * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+        f.targetY = surfY - 1;
+      } else {
+        f.targetY = baseY - 2;
+      }
+      f.y += (f.targetY - f.y) * 0.15;
+      const age = (now - f.born) / 1000;
+      if (age > 1.5) f.settled = true;
+    }
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.r, 0, TAU);
+    ctx.fillStyle = `rgba(255,255,255,${f.a})`;
+    ctx.fill();
+  }
+
+  // sparkle highlights
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.ellipse(cx - r * 0.35, baseY - h * 0.7, r * 0.08, h * 0.18, -0.4, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+function drawSyrupCoating(g) {
+  if (!state.syrupCoating || state.pileH < 1) return;
+  drawCoatingLayer(g, state.syrupCoating);
+}
+
+function drawCoatingLayer(g, c) {
+  const r = state.pileR * g.scale;
+  const h = state.pileH * g.scale;
+  const cx = g.bowlCenterX;
+  const baseY = g.bowlRimY;
+  const p = c.progress;
+  const ease = 1 - Math.pow(1 - p, 2.5);
+
+  // pile surface y at horizontal offset x from center
+  const pileY = (x) => {
+    const nx = x / r;
+    if (Math.abs(nx) >= 1) return baseY;
+    return baseY - h * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+  };
+
+  // organic descent profile
+  const descentAt = (nx) => {
+    const wave = Math.sin(nx * 6 + c.noiseSeed) * 0.5 +
+                 Math.sin(nx * 11 + c.noiseSeed * 1.7) * 0.5;
+    const baseCap = (0.13 + wave * 0.022) * Math.min(1, ease * 2.2);
+    let d = baseCap;
+
+    for (const f of c.features) {
+      const t = (nx - f.nx) / f.width;
+      const at = Math.abs(t);
+      if (at >= 1) continue;
+      // asymmetric falloff for a wonky organic feel
+      const skewed = t >= 0
+        ? at / Math.max(0.001, 1 - f.skew * 0.5)
+        : at / Math.max(0.001, 1 + f.skew * 0.5);
+      if (skewed >= 1) continue;
+      const shape = Math.pow(Math.cos(skewed * Math.PI / 2), f.power);
+      const fEase = clamp((ease - f.delay) / 0.55, 0, 1);
+      const fOut  = 1 - Math.pow(1 - fEase, 2);
+      const desc  = f.depth * shape * fOut;
+      if (desc > d) d = desc;
+    }
+    return d;
+  };
+
+  // sample the bottom edge as a profile
+  const samples = 96;
+  const profile = new Array(samples + 1);
+  for (let i = 0; i <= samples; i++) {
+    const nx = -0.99 + 1.98 * (i / samples);
+    const sx = cx + nx * r;
+    const sy = pileY(nx * r) + h * descentAt(nx);
+    profile[i] = { x: sx, y: sy };
+  }
+
+  ctx.save();
+
+  // clip to pile silhouette so syrup can never escape the snow
+  ctx.beginPath();
+  ctx.moveTo(cx - r, baseY);
+  for (let x = -r; x <= r; x += 2) ctx.lineTo(cx + x, pileY(x));
+  ctx.lineTo(cx + r, baseY);
+  ctx.closePath();
+  ctx.clip();
+
+  // build a smooth curve through the profile using quadratic-with-midpoint smoothing
+  ctx.beginPath();
+  ctx.moveTo(profile[0].x, profile[0].y);
+  for (let i = 1; i < profile.length - 1; i++) {
+    const cp = profile[i];
+    const next = profile[i + 1];
+    const midX = (cp.x + next.x) * 0.5;
+    const midY = (cp.y + next.y) * 0.5;
+    ctx.quadraticCurveTo(cp.x, cp.y, midX, midY);
+  }
+  ctx.lineTo(profile[profile.length - 1].x, profile[profile.length - 1].y);
+  // close around the top of the pile (high above the visible area)
+  ctx.lineTo(cx + r, baseY - h * 1.4);
+  ctx.lineTo(cx - r, baseY - h * 1.4);
+  ctx.closePath();
+
+  // fill with vertical gradient for subtle depth (no harsh shading)
+  const grad = ctx.createLinearGradient(cx, baseY - h, cx, baseY);
+  grad.addColorStop(0,    c.lightColor);
+  grad.addColorStop(0.55, c.color);
+  grad.addColorStop(1,    c.darkColor);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // hand-drawn-style outline along the bottom edge only (gives illustrated feel)
+  ctx.beginPath();
+  ctx.moveTo(profile[0].x, profile[0].y);
+  for (let i = 1; i < profile.length - 1; i++) {
+    const cp = profile[i];
+    const next = profile[i + 1];
+    const midX = (cp.x + next.x) * 0.5;
+    const midY = (cp.y + next.y) * 0.5;
+    ctx.quadraticCurveTo(cp.x, cp.y, midX, midY);
+  }
+  ctx.lineTo(profile[profile.length - 1].x, profile[profile.length - 1].y);
+  ctx.strokeStyle = c.darkColor;
+  ctx.globalAlpha = 0.45;
+  ctx.lineWidth = Math.max(1, 1.3 * g.scale);
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // soft glossy highlight on the cap — single elongated curve, no dots
+  const highlightA = clamp((ease - 0.35) * 1.8, 0, 1) * 0.55;
+  if (highlightA > 0) {
+    ctx.globalAlpha = highlightA;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    // soft crescent following the dome
+    const hx = cx - r * 0.18;
+    const hy = baseY - h * 0.92;
+    ctx.ellipse(hx, hy, r * 0.34, h * 0.04, -0.28, 0, TAU);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+function drawSyrupStream(g) {
+  const c = state.syrupCoating;
+  if (!c) return;
+  const p = c.progress;
+  if (p >= 0.5) return; // stream only during first half of pour
+
+  const r = state.pileR * g.scale;
+  const h = state.pileH * g.scale;
+  const cx = g.bowlCenterX;
+  const baseY = g.bowlRimY;
+  const pileTop = baseY - h;
+
+  // stream falls from above the pile down to its top
+  const streamStartY = Math.max(g.machineBottomY + 8 * g.scale, pileTop - 70 * g.scale);
+  const streamEndY = pileTop + 2;
+  // taper: full at start of pour, shrinking as we approach 0.5
+  const t = clamp(p / 0.5, 0, 1);
+  // fade in quickly, fade out near end
+  const alpha = Math.min(1, t * 6) * Math.min(1, (1 - t) * 3 + 0.3);
+  if (alpha <= 0.02 || streamEndY <= streamStartY) return;
+
+  const wTop = 2.4 * g.scale;
+  const wBot = 4.0 * g.scale;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = c.darkColor;
+  ctx.beginPath();
+  ctx.moveTo(cx - wTop, streamStartY);
+  ctx.lineTo(cx + wTop, streamStartY);
+  ctx.lineTo(cx + wBot, streamEndY);
+  ctx.lineTo(cx - wBot, streamEndY);
+  ctx.closePath();
+  ctx.fill();
+  // bright center line
+  ctx.fillStyle = c.lightColor;
+  ctx.beginPath();
+  ctx.moveTo(cx - wTop * 0.4, streamStartY);
+  ctx.lineTo(cx + wTop * 0.4, streamStartY);
+  ctx.lineTo(cx + wBot * 0.35, streamEndY);
+  ctx.lineTo(cx - wBot * 0.35, streamEndY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawMachine(g) {
+  const cx = g.machineCenterX;
+  const bottomY = g.machineBottomY;
+  const topY = g.machineTopY;
+  const s = g.scale;
+  const bodyW = 100 * s;
+  const halfW = bodyW / 2;
+
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a3a4d';
+
+  // ----- ice block at very top: a glass cube on top of machine -----
+  const iceTopY = topY - 25 * s;
+  const iceW = 56 * s;
+  ctx.save();
+  const iceGrad = ctx.createLinearGradient(cx - iceW/2, iceTopY, cx + iceW/2, topY);
+  iceGrad.addColorStop(0, 'rgba(220,238,250,0.95)');
+  iceGrad.addColorStop(1, 'rgba(160,210,230,0.85)');
+  ctx.fillStyle = iceGrad;
+  // rounded ice block
+  roundRect(cx - iceW/2, iceTopY, iceW, 28 * s, 6 * s);
+  ctx.fill();
+  ctx.stroke();
+  // ice highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillRect(cx - iceW/2 + 5 * s, iceTopY + 4 * s, 4 * s, 18 * s);
+  ctx.restore();
+
+  // ----- top dome -----
+  ctx.fillStyle = '#fafafa';
+  ctx.beginPath();
+  ctx.moveTo(cx - halfW, topY + 10 * s);
+  ctx.quadraticCurveTo(cx, topY - 15 * s, cx + halfW, topY + 10 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // red band on dome
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx - halfW + 4, topY + 8 * s);
+  ctx.quadraticCurveTo(cx, topY - 12 * s, cx + halfW - 4, topY + 8 * s);
+  ctx.lineTo(cx + halfW - 4, topY + 16 * s);
+  ctx.quadraticCurveTo(cx, topY - 4 * s, cx - halfW + 4, topY + 16 * s);
+  ctx.closePath();
+  ctx.fillStyle = '#e94560';
+  ctx.fill();
+  ctx.restore();
+
+  // ----- main body -----
+  ctx.fillStyle = '#fafafa';
+  roundRect(cx - halfW, topY + 10 * s, bodyW, (bottomY - topY) - 10 * s, 4 * s);
+  ctx.fill();
+  ctx.stroke();
+
+  // body label panel
+  ctx.fillStyle = '#fff8e1';
+  roundRect(cx - 32 * s, topY + 40 * s, 64 * s, 36 * s, 4 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // label text "氷"
+  ctx.fillStyle = '#e94560';
+  ctx.font = `${22 * s}px 'Yusei Magic', serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('氷', cx, topY + 58 * s);
+
+  // ----- outlet at bottom -----
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.fillStyle = '#3a3a3a';
+  roundRect(cx - 22 * s, bottomY - 12 * s, 44 * s, 12 * s, 3 * s);
+  ctx.fill();
+  ctx.stroke();
+
+  // ----- left support (foot) -----
+  ctx.fillStyle = '#3d3d3d';
+  roundRect(cx - halfW - 4, bottomY - 2, bodyW + 8, 6 * s, 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // ----- crank arm + handle on right -----
+  const px = g.handlePivotX;
+  const py = g.handlePivotY;
+  const armLen = g.armLen;
+
+  // pivot circle (bolt)
+  ctx.fillStyle = '#6c757d';
+  ctx.beginPath();
+  ctx.arc(px, py, 6 * s, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+
+  // arm
+  const angle = state.handleAngle;
+  const tipX = px + Math.cos(angle) * armLen;
+  const tipY = py + Math.sin(angle) * armLen;
+  ctx.save();
+  ctx.lineWidth = 6 * s;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#c89668';
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(tipX, tipY);
+  ctx.stroke();
+  // dark outline on arm
+  ctx.lineWidth = 8 * s;
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(tipX, tipY);
+  ctx.stroke();
+  ctx.restore();
+
+  // handle grip
+  ctx.save();
+  ctx.fillStyle = '#8b5e3c';
+  ctx.beginPath();
+  ctx.arc(tipX, tipY, 11 * s, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // wood ring detail
+  ctx.beginPath();
+  ctx.arc(tipX, tipY, 6 * s, 0, TAU);
+  ctx.strokeStyle = '#5e3e26';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // arrow hint if rotations is low
+  if (state.rotations < 1 && !state.isDragging) {
+    const hintT = (performance.now() / 500) % 1;
+    ctx.save();
+    ctx.globalAlpha = 0.6 + Math.sin(performance.now() * 0.005) * 0.3;
+    ctx.translate(px, py);
+    ctx.fillStyle = '#e94560';
+    ctx.font = `${16 * s}px 'Yusei Magic', serif`;
+    ctx.textAlign = 'center';
+    // circular arrow indicator using arc
+    ctx.beginPath();
+    ctx.lineWidth = 3 * s;
+    ctx.strokeStyle = '#e94560';
+    ctx.arc(0, 0, armLen + 14 * s, -0.7, 4.5);
+    ctx.stroke();
+    // arrowhead
+    const aa = 4.5;
+    const ax = (armLen + 14 * s) * Math.cos(aa);
+    const ay = (armLen + 14 * s) * Math.sin(aa);
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - 8 * s, ay - 2 * s);
+    ctx.lineTo(ax - 4 * s, ay + 8 * s);
+    ctx.closePath();
+    ctx.fillStyle = '#e94560';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawParticles() {
+  for (const p of state.particles) {
+    if (p.isSpark) {
+      // 4-point sparkle star with glow halo
+      const lifeFade = clamp(1 - p.life / 50, 0, 1);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      // halo
+      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size * 5);
+      halo.addColorStop(0, `rgba(255,255,255,${0.55 * lifeFade})`);
+      halo.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(-p.size * 5, -p.size * 5, p.size * 10, p.size * 10);
+      // 4-point star
+      ctx.fillStyle = p.color || '#ffffff';
+      ctx.beginPath();
+      const s = p.size * 2.3 * lifeFade;
+      ctx.moveTo(0, -s);
+      ctx.lineTo(s * 0.3, -s * 0.3);
+      ctx.lineTo(s, 0);
+      ctx.lineTo(s * 0.3, s * 0.3);
+      ctx.lineTo(0, s);
+      ctx.lineTo(-s * 0.3, s * 0.3);
+      ctx.lineTo(-s, 0);
+      ctx.lineTo(-s * 0.3, -s * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      continue;
+    }
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.fillStyle  = p.color  || '#fff';
+    ctx.strokeStyle = p.stroke || 'rgba(95, 168, 196, 0.6)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, p.size, p.size * p.tilt, 0, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ---------- celebration: characters, sparkles, praise banner ----------
+
+function drawPenguin(x, y, size, t, opts = {}) {
+  // simple stylized penguin with raised flippers and a bob
+  const bob   = Math.sin(t * 3 + (opts.phase || 0)) * 2;
+  const flap  = Math.sin(t * 4.5 + (opts.phase || 0)) * 0.45;
+  const W = size * 0.62, B = size * 0.85;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  // feet
+  ctx.fillStyle = '#ff9d3d';
+  ctx.beginPath(); ctx.ellipse(-size*0.20, B*0.95, size*0.20, size*0.075, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.20, B*0.95, size*0.20, size*0.075, 0, 0, TAU); ctx.fill();
+  // body
+  ctx.fillStyle = opts.bodyColor || '#243447';
+  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#0c1422';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // white belly
+  ctx.fillStyle = '#fff8ec';
+  ctx.beginPath(); ctx.ellipse(0, size*0.12, W*0.66, B*0.74, 0, 0, TAU); ctx.fill();
+  // flippers (raised, waving)
+  ctx.fillStyle = opts.bodyColor || '#243447';
+  ctx.save();
+  ctx.translate(-W*0.92, -B*0.10);
+  ctx.rotate(-0.9 + flap);
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.42, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(W*0.92, -B*0.10);
+  ctx.rotate(0.9 - flap);
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.42, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+  // eyes
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(-size*0.16, -size*0.38, size*0.13, size*0.16, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.16, -size*0.38, size*0.13, size*0.16, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#0c1422';
+  ctx.beginPath(); ctx.arc(-size*0.14, -size*0.36, size*0.065, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc( size*0.18, -size*0.36, size*0.065, 0, TAU); ctx.fill();
+  // beak
+  ctx.fillStyle = '#ff9d3d';
+  ctx.beginPath();
+  ctx.moveTo(0, -size*0.20);
+  ctx.lineTo(-size*0.11, -size*0.07);
+  ctx.lineTo( size*0.11, -size*0.07);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#a8551d';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // cheek blush
+  ctx.fillStyle = 'rgba(255,140,140,0.55)';
+  ctx.beginPath(); ctx.ellipse(-size*0.30, -size*0.20, size*0.10, size*0.06, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.30, -size*0.20, size*0.10, size*0.06, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+function drawShirokuma(x, y, size, t, opts = {}) {
+  // chubby polar-bear: cream/white round body, tiny ears
+  const bob = Math.sin(t * 2.8 + (opts.phase || 0)) * 2;
+  const W = size * 0.72, B = size * 0.82;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  if (opts.flip) ctx.scale(-1, 1);
+  // feet
+  ctx.fillStyle = '#f1e5d2';
+  ctx.beginPath(); ctx.ellipse(-size*0.24, B*0.95, size*0.20, size*0.080, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.24, B*0.95, size*0.20, size*0.080, 0, 0, TAU); ctx.fill();
+  // body (egg shape)
+  ctx.fillStyle = '#fffaf0';
+  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#a99a7a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // ears (small bumps on top)
+  ctx.beginPath(); ctx.arc(-W*0.55, -B*0.78, size*0.13, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc( W*0.55, -B*0.78, size*0.13, 0, TAU); ctx.fill(); ctx.stroke();
+  // inner ears
+  ctx.fillStyle = '#ffd1d1';
+  ctx.beginPath(); ctx.arc(-W*0.55, -B*0.76, size*0.06, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc( W*0.55, -B*0.76, size*0.06, 0, TAU); ctx.fill();
+  // arms raised in cheer
+  const arm = Math.sin(t * 4 + (opts.phase || 0)) * 0.3;
+  ctx.fillStyle = '#fffaf0';
+  ctx.strokeStyle = '#a99a7a';
+  ctx.save();
+  ctx.translate(-W*0.85, -B*0.05);
+  ctx.rotate(-1.1 + arm);
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.34, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(W*0.85, -B*0.05);
+  ctx.rotate(1.1 - arm);
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.14, size*0.34, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // muzzle
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(0, size*0.06, size*0.28, size*0.20, 0, 0, TAU); ctx.fill();
+  // nose
+  ctx.fillStyle = '#2a3a4d';
+  ctx.beginPath(); ctx.ellipse(0, -size*0.04, size*0.08, size*0.06, 0, 0, TAU); ctx.fill();
+  // mouth
+  ctx.beginPath();
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = 1.6;
+  ctx.moveTo(0, size*0.02);
+  ctx.quadraticCurveTo(-size*0.06, size*0.12, -size*0.10, size*0.10);
+  ctx.moveTo(0, size*0.02);
+  ctx.quadraticCurveTo( size*0.06, size*0.12,  size*0.10, size*0.10);
+  ctx.stroke();
+  // eyes
+  ctx.fillStyle = '#0c1422';
+  ctx.beginPath(); ctx.ellipse(-size*0.18, -size*0.22, size*0.05, size*0.07, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.18, -size*0.22, size*0.05, size*0.07, 0, 0, TAU); ctx.fill();
+  // cheek blush
+  ctx.fillStyle = 'rgba(255,160,160,0.5)';
+  ctx.beginPath(); ctx.ellipse(-size*0.32, -size*0.07, size*0.09, size*0.055, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( size*0.32, -size*0.07, size*0.09, size*0.055, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+function drawChick(x, y, size, t, opts = {}) {
+  // floating yellow chick with flapping wings
+  const bob = Math.sin(t * 3.6 + (opts.phase || 0)) * 4;
+  const flap = Math.sin(t * 10 + (opts.phase || 0)) * 0.6;
+  const W = size * 0.62, B = size * 0.58;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  // body
+  ctx.fillStyle = '#ffd84a';
+  ctx.beginPath(); ctx.ellipse(0, 0, W, B, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#b88a18';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  // wing
+  ctx.save();
+  ctx.translate(-W*0.4, 0);
+  ctx.rotate(-0.3 + flap);
+  ctx.fillStyle = '#ffc81a';
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.20, size*0.13, 0, 0, TAU); ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  // beak
+  ctx.fillStyle = '#ff9d3d';
+  ctx.beginPath();
+  ctx.moveTo(W*0.85, 0);
+  ctx.lineTo(W*0.50, -size*0.06);
+  ctx.lineTo(W*0.50,  size*0.06);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // eye
+  ctx.fillStyle = '#0c1422';
+  ctx.beginPath(); ctx.arc(W*0.10, -size*0.10, size*0.045, 0, TAU); ctx.fill();
+  // cheek blush
+  ctx.fillStyle = 'rgba(255,140,140,0.55)';
+  ctx.beginPath(); ctx.ellipse(-W*0.05, size*0.05, size*0.08, size*0.045, 0, 0, TAU); ctx.fill();
+  // tiny feet hanging
+  ctx.strokeStyle = '#ff9d3d';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-size*0.08, B*0.85); ctx.lineTo(-size*0.08, B*1.1);
+  ctx.moveTo( size*0.08, B*0.85); ctx.lineTo( size*0.08, B*1.1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSparkleStar(x, y, size, color, alpha) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  // 4-point sparkle (diamond + cross)
+  ctx.beginPath();
+  ctx.moveTo(0, -size);
+  ctx.quadraticCurveTo(size * 0.18, -size * 0.18, size, 0);
+  ctx.quadraticCurveTo(size * 0.18,  size * 0.18, 0, size);
+  ctx.quadraticCurveTo(-size * 0.18, size * 0.18, -size, 0);
+  ctx.quadraticCurveTo(-size * 0.18, -size * 0.18, 0, -size);
+  ctx.closePath();
+  ctx.fill();
+  // center bright dot
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = alpha * 0.9;
+  ctx.beginPath();
+  ctx.arc(0, 0, size * 0.25, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCelebration(g) {
+  if (!state.celebrating) return;
+  const ct = state.celebrationT;
+
+  // sparkles (in canvas coords, framed around the kakigori)
+  for (const sp of state.sparkles) {
+    const tw = (Math.sin(ct * 3.2 + sp.phase) + 1) * 0.5; // 0..1
+    const fadeIn = clamp(ct * 1.4, 0, 1);
+    const size = sp.size * (0.55 + tw * 0.65);
+    drawSparkleStar(sp.x, sp.y, size, sp.color, (0.55 + tw * 0.4) * fadeIn);
+  }
+
+  // characters slide up from below
+  for (const char of state.characters) {
+    const localT = ct - char.entryT;
+    if (localT < 0) continue;
+    const entry = clamp(localT / 0.55, 0, 1);
+    const eased = 1 - Math.pow(1 - entry, 3);
+    const yOff = (1 - eased) * 110;
+    // a tiny overshoot wobble
+    const wobble = entry < 1 ? Math.sin(entry * Math.PI) * -6 : 0;
+    const y = char.baseY + yOff + wobble;
+    const opts = { phase: char.bobPhase, flip: char.flip };
+    if (char.type === 'penguin')        drawPenguin(char.baseX,   y, 54, ct, opts);
+    else if (char.type === 'shirokuma') drawShirokuma(char.baseX, y, 56, ct, opts);
+    else if (char.type === 'chick')     drawChick(char.baseX,     y, 34, ct, opts);
+  }
+
+  // Chomp hit indicators — rise from the multiplier badge position so they're
+  // always in the user's line of sight (not at scattered click positions).
+  // Compute the anchor (same as mult badge below)
+  const stablePileH = (state.phase === 'eating' || state.phase === 'done')
+    ? state.frozenPileH * g.scale
+    : state.pileH * g.scale;
+  const anchorX = g.bowlCenterX;
+  const anchorY = Math.max(95, g.bowlRimY - stablePileH - 32 * g.scale);
+
+  for (const fx of state.chompFx) {
+    const t = fx.life / 32; // 0..1
+    const lift = -t * 60;
+    const alpha = 1 - t;
+    const scale = 1.2 + t * 0.7;
+    const wobble = Math.sin(t * Math.PI * 3) * 0.06 * (1 - t);
+    ctx.save();
+    ctx.translate(anchorX, anchorY - 36 + lift);
+    ctx.globalAlpha = alpha;
+    ctx.scale(scale + wobble, scale - wobble);
+    ctx.font = 'bold 36px "Yusei Magic", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // shadow stack
+    for (let i = 2; i >= 1; i--) {
+      ctx.fillStyle = `rgba(255,94,122,${0.3 / i})`;
+      ctx.fillText(fx.word, i * 1.8, i * 1.8);
+    }
+    ctx.lineWidth = 8;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#fff';
+    ctx.strokeText(fx.word, 0, 0);
+    ctx.fillStyle = '#ff2a5a';
+    ctx.fillText(fx.word, 0, 0);
+    ctx.restore();
+  }
+
+  // Live multiplier badge during eating — stable position (uses frozen pile h)
+  if (state.phase === 'eating' && state.eatingClicks > 0) {
+    const pulse = 1 + state.multBadgePulse * 0.55;
+    const tier = state.eatingLiveMult;
+    let col;
+    if      (tier >= 4)   col = '#ff5e7a';
+    else if (tier >= 3)   col = '#ff9d3d';
+    else if (tier >= 2)   col = '#ffce4a';
+    else                  col = '#7cc0ec';
+    ctx.save();
+    ctx.translate(anchorX, anchorY);
+    ctx.scale(pulse, pulse);
+    // glow halo around mult
+    const haloG = ctx.createRadialGradient(0, 0, 0, 0, 0, 60);
+    haloG.addColorStop(0, col + '88');
+    haloG.addColorStop(1, col + '00');
+    ctx.fillStyle = haloG;
+    ctx.fillRect(-60, -40, 120, 80);
+    ctx.font = 'bold 40px "Yusei Magic", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const txt = '× ' + tier.toFixed(1);
+    // shadow stack
+    for (let i = 3; i >= 1; i--) {
+      ctx.fillStyle = col + Math.round(96 / i).toString(16).padStart(2,'0');
+      ctx.fillText(txt, i * 1.5, i * 1.5);
+    }
+    // outline
+    ctx.lineWidth = 9;
+    ctx.strokeStyle = '#fff';
+    ctx.lineJoin = 'round';
+    ctx.strokeText(txt, 0, 0);
+    ctx.fillStyle = col;
+    ctx.fillText(txt, 0, 0);
+    ctx.restore();
+  }
+
+  // Top banner — appears later. During 'done' phase, banner gets larger.
+  const bannerIn = clamp((ct - 0.35) / 0.5, 0, 1);
+  if (bannerIn > 0 && state.praiseLabel) {
+    const isFinal = state.phase === 'done';
+    const isNewRecord = state.heightNewRecord || state.scoreNewRecord;
+    const fontSize = isFinal ? (isNewRecord ? 22 : 19) : 18;
+    const yPos = 28 - (1 - bannerIn) * 18;
+    const lines = state.praiseLabel.split('\n');
+    ctx.save();
+    ctx.globalAlpha = bannerIn;
+    ctx.font = `bold ${fontSize}px "Yusei Magic", serif`;
+    // measure widest line
+    let widest = 0;
+    for (const l of lines) widest = Math.max(widest, ctx.measureText(l).width);
+    const padX = 24, padY = lines.length > 1 ? 16 : 12;
+    const lineH = fontSize + 6;
+    const bw = Math.min(W - 16, widest + padX * 2);
+    const bh = lineH * lines.length + padY * 2 - 6;
+    const bx = W / 2 - bw / 2;
+    const by = yPos;
+
+    // 🌈 Bigger glow halo at new records
+    if (isNewRecord && isFinal) {
+      const haloT = ct * 2;
+      ctx.save();
+      for (let i = 5; i >= 1; i--) {
+        const hue = (haloT * 50 + i * 60) % 360;
+        ctx.fillStyle = `hsla(${hue},85%,65%,0.15)`;
+        ctx.beginPath();
+        roundRect(bx - i * 4, by - i * 4, bw + i * 8, bh + i * 8, 22 + i * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // shadow
+    ctx.fillStyle = 'rgba(42,58,77,0.20)';
+    ctx.beginPath();
+    roundRect(bx + 4, by + 5, bw, bh, 20);
+    ctx.fill();
+    // banner background — gold for normal, brighter for done, rainbow-tinged for records
+    const grad = ctx.createLinearGradient(0, by, 0, by + bh);
+    if (isNewRecord && isFinal) {
+      const phase = (ct * 0.5) % 1;
+      const h1 = (phase * 360) % 360;
+      const h2 = ((phase + 0.5) * 360) % 360;
+      grad.addColorStop(0, `hsl(${h1},90%,82%)`);
+      grad.addColorStop(0.5, '#fff9e3');
+      grad.addColorStop(1, `hsl(${h2},90%,72%)`);
+    } else if (isFinal) {
+      grad.addColorStop(0, '#fff3c4');
+      grad.addColorStop(1, '#ffce4a');
+    } else {
+      grad.addColorStop(0, '#fff9e3');
+      grad.addColorStop(1, '#ffe9a8');
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    roundRect(bx, by, bw, bh, 20);
+    ctx.fill();
+    ctx.strokeStyle = '#2a3a4d';
+    ctx.lineWidth = isNewRecord ? 3 : 2.5;
+    ctx.stroke();
+    // text
+    ctx.fillStyle = '#2a3a4d';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const centerY = by + bh / 2;
+    const startY = centerY - (lines.length - 1) * lineH / 2;
+    for (let i = 0; i < lines.length; i++) {
+      // Headline (first line) gets rainbow color cycling at new records
+      if (i === 0 && isNewRecord && isFinal) {
+        const hue = (ct * 80) % 360;
+        // outline
+        ctx.lineWidth = 5;
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#fff';
+        ctx.strokeText(lines[i], W / 2, startY + i * lineH);
+        ctx.fillStyle = `hsl(${hue},85%,45%)`;
+        ctx.fillText(lines[i], W / 2, startY + i * lineH);
+        ctx.fillStyle = '#2a3a4d';
+      } else {
+        ctx.fillText(lines[i], W / 2, startY + i * lineH);
+      }
+    }
+    ctx.restore();
+  }
+}
+
+function drawScene() {
+  ctx.clearRect(0, 0, W, H);
+  const g = geometry();
+
+  // Subtle scene shake when timer is in last 5 seconds (gets stronger as time runs out)
+  let shakeX = 0, shakeY = 0;
+  if (state.warningPulseT > 0) {
+    const wp = state.warningPulseT;
+    // intensity grows as the player gets more frantic
+    const intensity = Math.min(1, wp / 3) * 2.5;
+    shakeX = Math.sin(wp * 18) * intensity;
+    shakeY = Math.cos(wp * 14) * intensity * 0.7;
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+  }
+
+  // distant background: sun + clouds + lanterns + confetti
+  drawBackground(g);
+
+  // 🔥 Last-5-sec sky warning — subtle red overlay creeping in
+  if (state.warningPulseT > 0) {
+    const wp = state.warningPulseT;
+    const tint = Math.min(0.22, wp * 0.07);
+    const pulse = (Math.sin(wp * 6) + 1) * 0.5; // 0..1
+    ctx.save();
+    ctx.fillStyle = `rgba(255, 80, 90, ${tint * (0.6 + pulse * 0.4)})`;
+    ctx.fillRect(0, 0, W, H * 0.6);
+    ctx.restore();
+  }
+
+  // 🐧 BACK layer animals — drawn first, end up behind the bowl/machine
+  drawBgAnimals(g, 'back');
+
+  // bowl, pile, machine
+  drawBowl(g);
+  drawPile(g);
+  drawSyrupCoating(g);
+  drawSyrupStream(g);
+  drawMachine(g);
+
+  // ✨ Pile surface sparkles — make the ice glitter magically
+  drawPileSparkles();
+
+  // 💨 cold steam wisps rising off the kakigori
+  drawColdSteam(g);
+
+  // 🐧 FRONT layer animals — drawn after bowl & machine so they walk in front,
+  // adding visual depth and crowd-feel
+  drawBgAnimals(g, 'front');
+
+  drawParticles();
+  drawRotationFx(g);
+  // 💨 manga-style speed lines around the handle when cranking
+  drawSpeedLines(g);
+  // 🎆 fireworks (only during records)
+  drawFireworks();
+  // celebration overlays (in canvas coords, not transformed by camera)
+  drawCelebration(g);
+  // 🔥 combo badge + milestone celebration text
+  drawComboBadge(g);
+  drawComboCelebrate(g);
+  // 🎓 first-time handle hint
+  drawHandleHint(g);
+  // step prompts and scene transitions on top of everything
+  drawEatingPrompt(g);
+  drawTransition(g);
+  // ⏰ TIME UP flash + slight slow-mo veil + radial shockwave
+  if (state.timeUpFlashT > 0) {
+    const total = 1.0;
+    const p = state.timeUpFlashT / total; // 1 → 0
+    const flashAlpha = Math.pow(p, 1.5) * 0.85;
+    ctx.save();
+    ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+    // Radial shockwave ring expanding outward
+    const expand = 1 - p;
+    const ringR = expand * Math.max(W, H) * 0.9;
+    if (ringR > 10) {
+      const ringA = clamp(1 - expand, 0, 1) * 0.7;
+      ctx.strokeStyle = `rgba(255,206,74,${ringA})`;
+      ctx.lineWidth = 8 * (1 - expand * 0.5);
+      ctx.beginPath();
+      ctx.arc(W / 2, H * 0.55, ringR, 0, TAU);
+      ctx.stroke();
+      // inner secondary ring
+      ctx.strokeStyle = `rgba(255,94,122,${ringA * 0.7})`;
+      ctx.lineWidth = 4 * (1 - expand * 0.5);
+      ctx.beginPath();
+      ctx.arc(W / 2, H * 0.55, ringR * 0.7, 0, TAU);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // 🌈 New-record rainbow flash sweeping across the screen
+  if (state.recordFlashT > 0) {
+    const total = 0.9;
+    const p = state.recordFlashT / total; // 1 → 0
+    const t = performance.now() / 1000;
+    const alpha = Math.pow(p, 0.8) * 0.42;
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    const o = (t * 0.6) % 1;
+    grad.addColorStop((0   + o) % 1, `rgba(255,94,122,${alpha})`);
+    grad.addColorStop((0.2 + o) % 1, `rgba(255,216,74,${alpha})`);
+    grad.addColorStop((0.4 + o) % 1, `rgba(108,186,135,${alpha})`);
+    grad.addColorStop((0.6 + o) % 1, `rgba(66,135,214,${alpha})`);
+    grad.addColorStop((0.8 + o) % 1, `rgba(160,108,213,${alpha})`);
+    grad.addColorStop((1.0 + o) % 1, `rgba(255,94,122,${alpha})`);
+    ctx.save();
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  // 🎉 title screen overlay sits on top of everything during 'title' phase
+  drawTitleScreen(g);
+
+  if (state.warningPulseT > 0) {
+    ctx.restore();
+  }
+}
+
+// Big "連打で食べて！" prompt during eating (and the entering transition).
+// During the 1.6s transition: white flash + huge text in the middle.
+// After transition, before first bite: smaller pulsing reminder.
+function drawEatingPrompt(g) {
+  if (state.phase !== 'eating') return;
+  if (state.transitionT > 0) return; // transition draws its own version
+  if (state.eatingClicks > 0) return; // hide as soon as user starts eating
+
+  const t = performance.now() / 1000;
+  const pulse = 1 + Math.sin(t * 4) * 0.06;
+  ctx.save();
+  ctx.translate(W / 2, H * 0.38);
+  ctx.scale(pulse, pulse);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Step pill
+  ctx.font = 'bold 14px "DotGothic16", monospace';
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('STEP 3 / 3', 0, -42);
+  // Main text
+  ctx.font = 'bold 38px "Yusei Magic", serif';
+  ctx.lineWidth = 9;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('🥄 連打で食べて！', 0, 0);
+  ctx.fillStyle = '#ff5e7a';
+  ctx.fillText('🥄 連打で食べて！', 0, 0);
+  // Hint
+  ctx.font = 'bold 16px "Zen Maru Gothic", sans-serif';
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('クリック / タップを高速連打！', 0, 36);
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('クリック / タップを高速連打！', 0, 36);
+  ctx.restore();
+}
+
+function drawTransition(g) {
+  if (state.transitionT <= 0) return;
+  const total = 1.6;
+  const elapsed = total - state.transitionT;
+
+  // Phase 1: a quick white flash for ~0.25s
+  if (elapsed < 0.30) {
+    const a = (0.30 - elapsed) / 0.30;
+    ctx.save();
+    ctx.fillStyle = `rgba(255, 250, 235, ${a * 0.85})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  // Phase 2: big "STEP 3 / 連打で食べて！" overlay (eases in, holds, eases out)
+  const textT = clamp((elapsed - 0.08) / (total - 0.10), 0, 1);
+  const inEase  = Math.min(1, textT * 4);            // grow over 25% of remaining
+  const outEase = textT > 0.78 ? (1 - (textT - 0.78) / 0.22) : 1;
+  const alpha = inEase * outEase;
+  const scale = 0.6 + inEase * 0.45;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(W / 2, H * 0.4);
+  ctx.scale(scale, scale);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Step pill text
+  ctx.font = 'bold 16px "DotGothic16", monospace';
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('▶  STEP 3 / 3  ◀', 0, -52);
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('▶  STEP 3 / 3  ◀', 0, -52);
+  // Big title
+  ctx.font = 'bold 46px "Yusei Magic", serif';
+  ctx.lineWidth = 11;
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('🥄 連打で食べて！', 0, 0);
+  ctx.fillStyle = '#ff5e7a';
+  ctx.fillText('🥄 連打で食べて！', 0, 0);
+  // Sub
+  ctx.font = 'bold 18px "Zen Maru Gothic", sans-serif';
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('早ければ早いほど高倍率 ×5.0まで！', 0, 44);
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('早ければ早いほど高倍率 ×5.0まで！', 0, 44);
+  ctx.restore();
+}
+
+function drawRotationFx(g) {
+  if (!state.rotationFx.length) return;
+  // anchor near top of machine
+  const x = g.machineCenterX;
+  const y = g.machineTopY + 16 * g.scale;
+  for (const fx of state.rotationFx) {
+    const t = fx.life / 36;
+    const lift = -t * 50;
+    const alpha = 1 - t;
+    const scale = 1 + t * 0.6;
+    ctx.save();
+    ctx.translate(x, y + lift);
+    ctx.globalAlpha = alpha;
+    ctx.scale(scale, scale);
+    // 💥 burst sparkles around the text
+    ctx.fillStyle = `rgba(255,206,74,${alpha * 0.5})`;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU + t * 3;
+      const r = 22 + t * 24;
+      const px = Math.cos(a) * r;
+      const py = Math.sin(a) * r;
+      ctx.beginPath();
+      ctx.arc(px, py, 2, 0, TAU);
+      ctx.fill();
+    }
+    ctx.font = 'bold 20px "Yusei Magic", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 6;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#fff';
+    ctx.strokeText('⭐ +15 ボーナス！', 0, 0);
+    ctx.fillStyle = '#ff7e3a';
+    ctx.fillText('⭐ +15 ボーナス！', 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawBackground(g) {
+  // sun — gradually grows as the pile gets taller, suggesting "rising higher"
+  ctx.save();
+  // The pile growth scales the sun from 1.0× to about 2.4× over a tall pile
+  const sunGrowth = 1 + clamp(state.pileH / 600, 0, 1.4);
+  const sx = W * 0.82;
+  const sy = 60 - clamp(state.pileH / 800, 0, 0.5) * 18; // drift slightly upward too
+  const sr = 28 * sunGrowth;
+  const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 2);
+  sg.addColorStop(0, 'rgba(255, 224, 130, 0.9)');
+  sg.addColorStop(1, 'rgba(255, 224, 130, 0)');
+  ctx.fillStyle = sg;
+  ctx.fillRect(sx - sr * 2, sy - sr * 2, sr * 4, sr * 4);
+  ctx.fillStyle = '#fff5b8';
+  ctx.beginPath();
+  ctx.arc(sx, sy, sr * 0.7, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+
+  // ☁️ drifting clouds add ambient motion
+  drawClouds();
+  // 🏮 paper lanterns hanging across the top of the scene
+  drawLanterns(g);
+  // 🎉 light scatter of confetti drifting forever
+  drawConfettiBg();
+
+  // horizon strip
+  ctx.fillStyle = 'rgba(255, 220, 200, 0.5)';
+  ctx.fillRect(0, H * 0.55, W, 2);
+}
+
+// ---------- 🏮 festival decorations ----------
+// Paper lanterns + falling confetti make the canvas top feel like a real
+// summer matsuri. Lanterns sway in place; confetti drifts down forever.
+function initLanterns() {
+  state.lanterns = [];
+  const colors = ['#ff5e7a', '#ffce4a', '#6cba87', '#f08a4b', '#e94560', '#4287d6', '#ff9d3d'];
+  const count = 7;
+  for (let i = 0; i < count; i++) {
+    state.lanterns.push({
+      x: (W / (count + 1)) * (i + 1) + rand(-12, 12),
+      y: rand(20, 38),
+      size: rand(15, 22),
+      color: colors[i % colors.length],
+      phase: rand(0, TAU),
+    });
+  }
+  // 🎌 colorful triangle flag string slightly below the lanterns
+  state.flags = [];
+  const flagColors = ['#ff5e7a','#ffd84a','#6cba87','#4287d6','#f08a4b','#a06cd5'];
+  const flagCount = 14;
+  for (let i = 0; i < flagCount; i++) {
+    state.flags.push({
+      x: (W / flagCount) * (i + 0.5),
+      color: flagColors[i % flagColors.length],
+      phase: rand(0, TAU),
+    });
+  }
+  // confetti — light scatter that drifts forever
+  state.confettiBg = [];
+  for (let i = 0; i < 28; i++) {
+    state.confettiBg.push({
+      x: rand(0, W),
+      y: rand(-H, H * 0.5),
+      vx: rand(-0.3, 0.3),
+      vy: rand(0.15, 0.55),
+      rot: rand(0, TAU),
+      vrot: rand(-0.05, 0.05),
+      color: ['#ff5e7a','#ffd84a','#6cba87','#4287d6','#f08a4b','#a06cd5'][i % 6],
+      size: rand(3, 7),
+      shape: i % 3, // 0=rect 1=circle 2=triangle
+    });
+  }
+}
+
+function updateFestivalBits(dt) {
+  // confetti drift
+  for (const c of state.confettiBg) {
+    c.x += c.vx * dt;
+    c.y += c.vy * dt;
+    c.rot += c.vrot * dt;
+    if (c.y > H + 8) {
+      c.y = -10;
+      c.x = rand(0, W);
+    }
+    if (c.x < -10) c.x = W + 10;
+    else if (c.x > W + 10) c.x = -10;
+  }
+}
+
+function drawLanterns(g) {
+  if (!state.lanterns.length) return;
+  const t = performance.now() / 1000;
+
+  // 🎌 Flag string just below the lanterns - draw first (background)
+  if (state.flags && state.flags.length) {
+    const flagY = 65;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(42,58,77,0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, flagY);
+    for (let x = 0; x <= W; x += 6) {
+      const sag = Math.sin((x / W) * Math.PI) * 3;
+      ctx.lineTo(x, flagY + sag);
+    }
+    ctx.stroke();
+    for (const f of state.flags) {
+      const sag = Math.sin((f.x / W) * Math.PI) * 3;
+      const sway = Math.sin(t * 2 + f.phase) * 0.15;
+      ctx.save();
+      ctx.translate(f.x, flagY + sag);
+      ctx.rotate(sway);
+      ctx.fillStyle = f.color;
+      ctx.strokeStyle = '#2a3a4d';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(-5, 0);
+      ctx.lineTo(5, 0);
+      ctx.lineTo(0, 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // Top horizontal string the lanterns hang from
+  ctx.save();
+  ctx.strokeStyle = 'rgba(42,58,77,0.45)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(0, 14);
+  for (let x = 0; x <= W; x += 12) {
+    const sag = Math.sin((x / W) * Math.PI) * 4;
+    ctx.lineTo(x, 14 + sag);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  for (const lan of state.lanterns) {
+    const sway = Math.sin(t * 1.2 + lan.phase) * 4;
+    const ang  = Math.sin(t * 1.2 + lan.phase) * 0.06;
+    ctx.save();
+    ctx.translate(lan.x + sway, lan.y);
+    ctx.rotate(ang);
+
+    // 🌟 warm glow halo behind the lantern
+    const haloGrad = ctx.createRadialGradient(0, lan.size * 0.5, 0, 0, lan.size * 0.5, lan.size * 1.8);
+    haloGrad.addColorStop(0, lan.color + '88');
+    haloGrad.addColorStop(0.5, lan.color + '33');
+    haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = haloGrad;
+    ctx.fillRect(-lan.size * 1.8, -lan.size * 1.3, lan.size * 3.6, lan.size * 3.2);
+
+    // hanging string
+    ctx.strokeStyle = '#2a3a4d';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, -2);
+    ctx.lineTo(0, -8);
+    ctx.stroke();
+    // top cap
+    ctx.fillStyle = '#2a3a4d';
+    ctx.fillRect(-lan.size * 0.32, -2, lan.size * 0.64, 2);
+    // body
+    ctx.fillStyle = lan.color;
+    ctx.strokeStyle = '#2a3a4d';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.ellipse(0, lan.size * 0.5, lan.size * 0.55, lan.size * 0.62, 0, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    // vertical ribbing lines
+    ctx.strokeStyle = 'rgba(42,58,77,0.35)';
+    ctx.lineWidth = 0.8;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * lan.size * 0.25, lan.size * 0.02);
+      ctx.lineTo(i * lan.size * 0.25, lan.size * 0.98);
+      ctx.stroke();
+    }
+    // bottom cap
+    ctx.fillStyle = '#2a3a4d';
+    ctx.fillRect(-lan.size * 0.32, lan.size * 1.0, lan.size * 0.64, 2);
+    // tiny tassel
+    ctx.beginPath();
+    ctx.moveTo(0, lan.size * 1.05);
+    ctx.lineTo(0, lan.size * 1.18);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawConfettiBg() {
+  for (const c of state.confettiBg) {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.rot);
+    ctx.fillStyle = c.color;
+    ctx.globalAlpha = 0.85;
+    if (c.shape === 0) {
+      ctx.fillRect(-c.size / 2, -c.size / 4, c.size, c.size / 2);
+    } else if (c.shape === 1) {
+      ctx.beginPath();
+      ctx.arc(0, 0, c.size / 2, 0, TAU);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(0, -c.size / 2);
+      ctx.lineTo(c.size / 2, c.size / 2);
+      ctx.lineTo(-c.size / 2, c.size / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// ---------- ☁️ drifting clouds ----------
+function initClouds() {
+  state.clouds = [];
+  const count = 3;
+  for (let i = 0; i < count; i++) {
+    state.clouds.push({
+      x: (W / count) * i + rand(-30, 30),
+      y: rand(45, 110),
+      size: rand(26, 44),
+      speed: rand(0.05, 0.12) * (Math.random() < 0.5 ? -1 : 1),
+    });
+  }
+}
+
+function updateClouds(dt) {
+  for (const c of state.clouds) {
+    c.x += c.speed * dt;
+    if (c.speed > 0 && c.x > W + c.size * 2) c.x = -c.size * 2;
+    else if (c.speed < 0 && c.x < -c.size * 2) c.x = W + c.size * 2;
+  }
+}
+
+function drawClouds() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.strokeStyle = 'rgba(42,58,77,0.25)';
+  ctx.lineWidth = 1.2;
+  for (const c of state.clouds) {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.size * 0.6, 0, TAU);
+    ctx.arc(c.x + c.size * 0.55, c.y + 2, c.size * 0.5, 0, TAU);
+    ctx.arc(c.x - c.size * 0.55, c.y + 2, c.size * 0.45, 0, TAU);
+    ctx.arc(c.x + c.size * 0.25, c.y - c.size * 0.3, c.size * 0.42, 0, TAU);
+    ctx.arc(c.x - c.size * 0.25, c.y - c.size * 0.25, c.size * 0.38, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------- 💨 cold steam wisps rising from the pile ----------
+function drawColdSteam(g) {
+  if (state.pileH < 30) return;
+  if (state.phase === 'title' || state.phase === 'ready') return;
+  const t = performance.now() / 1000;
+  const cx = g.bowlCenterX;
+  const r = state.pileR * g.scale;
+  const top = g.bowlRimY - state.pileH * g.scale;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  // 4 wisps drifting upward in slow sinusoidal patterns
+  for (let i = 0; i < 4; i++) {
+    const phase = t * 0.5 + i * 1.7;
+    const baseX = cx + Math.sin(phase) * r * 0.5;
+    for (let j = 0; j < 5; j++) {
+      const lift = ((t * 0.4 + i * 0.3 + j * 0.2) % 1.0);
+      const x = baseX + Math.sin(phase + lift * 5) * (r * 0.3) + Math.sin(t * 0.8 + i) * 4;
+      const y = top - lift * 70 * g.scale + rand(-2, 2);
+      const alpha = (1 - lift) * 0.32;
+      const sz = 6 + lift * 14;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, sz);
+      grad.addColorStop(0, `rgba(200,225,235,${alpha})`);
+      grad.addColorStop(1, 'rgba(200,225,235,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x - sz, y - sz, sz * 2, sz * 2);
+    }
+  }
+  ctx.restore();
+}
+
+// ---------- 🎆 fireworks for new records ----------
+function spawnFirework() {
+  const fx = state.fireworks || (state.fireworks = []);
+  fx.push({
+    x: rand(W * 0.15, W * 0.85),
+    y: rand(40, H * 0.4),
+    age: 0,
+    max: 50,
+    color: ['#ff5e7a','#ffd84a','#6cba87','#4287d6','#f08a4b','#a06cd5'][Math.floor(Math.random() * 6)],
+    pieces: 18 + Math.floor(Math.random() * 6),
+  });
+}
+function updateFireworks(dt) {
+  if (!state.fireworks) return;
+  for (const fw of state.fireworks) fw.age += dt;
+  state.fireworks = state.fireworks.filter(fw => fw.age < fw.max);
+}
+function drawFireworks() {
+  if (!state.fireworks || !state.fireworks.length) return;
+  for (const fw of state.fireworks) {
+    const p = fw.age / fw.max;
+    const easeOut = 1 - Math.pow(1 - p, 2);
+    const radius = easeOut * 55;
+    const alpha = (1 - p) * 0.95;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < fw.pieces; i++) {
+      const a = (i / fw.pieces) * TAU;
+      const x = fw.x + Math.cos(a) * radius;
+      const y = fw.y + Math.sin(a) * radius + easeOut * 12; // slight gravity
+      // sparkle core
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5 * (1 - p), 0, TAU);
+      ctx.fill();
+      // colored halo
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 5);
+      g.addColorStop(0, fw.color + 'cc');
+      g.addColorStop(1, fw.color + '00');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - 6, y - 6, 12, 12);
+    }
+    ctx.restore();
+  }
+}
+
+// ---------- ✨ pile sparkles ----------
+// Random sparkles on the pile surface — the ice catching sunlight.
+function spawnPileSparkle(g) {
+  if (state.pileH < 6 || state.pileR < 6) return;
+  const cx = g.bowlCenterX;
+  const r = state.pileR * g.scale * 0.85;
+  // pick a random point on the dome's silhouette
+  const nx = rand(-0.85, 0.85);
+  const domeH = state.pileH * g.scale;
+  const px = cx + nx * r;
+  const py = g.bowlRimY - domeH * Math.pow(Math.cos(nx * Math.PI / 2), 1.3) + rand(-2, 0);
+  state.pileSparkles.push({
+    x: px, y: py,
+    size: rand(3.5, 7.5),         // bigger
+    life: 0,
+    max: rand(28, 50),            // longer-lived
+    color: state.syrupCoating ? '#ffffff' : '#dceffa',
+  });
+  if (state.pileSparkles.length > 80) state.pileSparkles.shift();
+}
+
+function updatePileSparkles(dt) {
+  for (const s of state.pileSparkles) s.life += dt;
+  state.pileSparkles = state.pileSparkles.filter(s => s.life < s.max);
+}
+
+function drawPileSparkles() {
+  for (const s of state.pileSparkles) {
+    const p = s.life / s.max;
+    const alpha = Math.sin(p * Math.PI) * 1.0;
+    // soft halo first
+    ctx.save();
+    const halo = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.size * 3);
+    halo.addColorStop(0, `rgba(255,255,255,${alpha * 0.5})`);
+    halo.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(s.x - s.size * 3, s.y - s.size * 3, s.size * 6, s.size * 6);
+    ctx.restore();
+    drawSparkleStar(s.x, s.y, s.size, s.color, alpha);
+  }
+}
+
+// ---------- 🔥 combo system ----------
+function drawComboBadge(g) {
+  // small combo counter near top of the screen during eating
+  if (state.phase !== 'eating' || state.comboCount < 2) return;
+  const t = performance.now() / 1000;
+  const pulse = 1 + Math.sin(t * 9) * 0.10;
+  const bounce = Math.sin(t * 7) * 3;
+  ctx.save();
+  ctx.translate(W / 2, 32 + bounce);
+  ctx.scale(pulse, pulse);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // tint stronger at higher combo
+  const heat = clamp(state.comboCount / 15, 0, 1);
+  const color = heat > 0.66 ? '#ff2a5a' : heat > 0.33 ? '#ff7e3a' : '#ff9d3d';
+  // glow halo
+  const haloGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 70);
+  haloGrad.addColorStop(0, color + '55');
+  haloGrad.addColorStop(1, color + '00');
+  ctx.fillStyle = haloGrad;
+  ctx.fillRect(-70, -40, 140, 80);
+  // text shadow layers
+  for (let i = 3; i >= 1; i--) {
+    ctx.fillStyle = `${color}${Math.round(80 / i).toString(16).padStart(2,'0')}`;
+    ctx.font = 'bold 28px "Yusei Magic", serif';
+    ctx.fillText(`🔥 COMBO ×${state.comboCount}`, i * 1.2, i * 1.2);
+  }
+  ctx.font = 'bold 28px "Yusei Magic", serif';
+  ctx.lineWidth = 7;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText(`🔥 COMBO ×${state.comboCount}`, 0, 0);
+  ctx.fillStyle = color;
+  ctx.fillText(`🔥 COMBO ×${state.comboCount}`, 0, 0);
+  ctx.restore();
+}
+
+function drawComboCelebrate(g) {
+  if (state.comboCelebrateT <= 0) return;
+  const total = 1.0;
+  const p = 1 - (state.comboCelebrateT / total);
+  const easeOut = 1 - Math.pow(1 - p, 3);
+  const yOff = (1 - easeOut) * 60;
+  const alpha = p < 0.2 ? p / 0.2 : (p > 0.75 ? (1 - p) / 0.25 : 1);
+  const scale = 0.5 + easeOut * 0.9;
+  const wobble = Math.sin(p * Math.PI * 4) * 0.04 * (1 - p);
+  ctx.save();
+  ctx.translate(W / 2, H * 0.42 - yOff);
+  ctx.scale(scale + wobble, scale - wobble);
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // background burst circle
+  const burstGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 130);
+  burstGrad.addColorStop(0, 'rgba(255,255,200,0.7)');
+  burstGrad.addColorStop(1, 'rgba(255,255,200,0)');
+  ctx.fillStyle = burstGrad;
+  ctx.fillRect(-130, -130, 260, 260);
+  // text with rainbow shadow
+  const txt = `COMBO ×${state.comboCelebrateN}!`;
+  ctx.font = 'bold 64px "Yusei Magic", serif';
+  for (let i = 5; i >= 1; i--) {
+    const hue = (i * 60 + p * 200) % 360;
+    ctx.fillStyle = `hsla(${hue},80%,65%,0.5)`;
+    ctx.fillText(txt, i * 1.8, i * 1.8);
+  }
+  ctx.lineWidth = 12;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText(txt, 0, 0);
+  ctx.fillStyle = state.comboCelebrateN >= 15 ? '#ff2a5a'
+                : state.comboCelebrateN >= 10 ? '#ff7e3a'
+                                              : '#ffd84a';
+  ctx.fillText(txt, 0, 0);
+  ctx.restore();
+}
+
+// ---------- 💨 manga-style speed lines during fast cranking ----------
+function drawSpeedLines(g) {
+  if (state.phase !== 'playing') return;
+  if (!state.isDragging) return;
+  // gauge cranking intensity from how fast totalRad has accumulated recently
+  // (we approximate via state.shakeT which gets boosted by cranks indirectly)
+  // -- simpler: use the rotations count + animal excitement as a proxy
+  const intensity = clamp(state.animalExcitement - 0.3, 0, 1);
+  if (intensity < 0.05) return;
+  const t = performance.now() / 1000;
+  const px = g.handlePivotX;
+  const py = g.handlePivotY;
+  const baseR = 50 * g.scale;
+  ctx.save();
+  ctx.strokeStyle = `rgba(42,58,77,${0.35 + intensity * 0.45})`;
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = 'round';
+  const lineCount = 8;
+  for (let i = 0; i < lineCount; i++) {
+    const ang = (i / lineCount) * TAU + state.handleAngle * 0.3 + t * 2;
+    const inner = baseR + 8 + Math.sin(t * 12 + i) * 4;
+    const outer = inner + 14 + intensity * 18;
+    const ix = px + Math.cos(ang) * inner;
+    const iy = py + Math.sin(ang) * inner;
+    const ox = px + Math.cos(ang) * outer;
+    const oy = py + Math.sin(ang) * outer;
+    ctx.beginPath();
+    ctx.moveTo(ix, iy);
+    ctx.lineTo(ox, oy);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------- 🎓 first-time handle hint ----------
+function drawHandleHint(g) {
+  if (state.phase !== 'ready') return;
+  // Fade out after ~6s or once the player has nudged the handle
+  if (state.readyHintT > 6) return;
+  const t = performance.now() / 1000;
+  const fade = state.readyHintT < 4 ? 1 : Math.max(0, 1 - (state.readyHintT - 4) / 2);
+  // Arrow position: just to the upper-right of the handle pivot
+  const px = g.handlePivotX + 24 * g.scale;
+  const py = g.handlePivotY - 22 * g.scale;
+  const wiggle = Math.sin(t * 2.4) * 3;
+  ctx.save();
+  ctx.globalAlpha = fade;
+  // little call-out label
+  ctx.translate(px + 40, py - 16 + wiggle);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 13px "DotGothic16", monospace';
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('ハンドルを', 0, -7);
+  ctx.strokeText('グルグル！', 0, 8);
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('ハンドルを', 0, -7);
+  ctx.fillText('グルグル！', 0, 8);
+  ctx.restore();
+  // curved arrow pointing toward the handle
+  ctx.save();
+  ctx.globalAlpha = fade;
+  ctx.strokeStyle = '#ff5e7a';
+  ctx.fillStyle   = '#ff5e7a';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(px + 36, py - 4 + wiggle);
+  ctx.quadraticCurveTo(px + 18, py + 8 + wiggle, px - 2, py + 2 + wiggle);
+  ctx.stroke();
+  // arrowhead
+  ctx.save();
+  ctx.translate(px - 2, py + 2 + wiggle);
+  ctx.rotate(Math.PI);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(8, -4);
+  ctx.lineTo(8, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  ctx.restore();
+}
+
+// ---------- background animals ----------
+// Populate animal positions across the canvas width. Called on resize so the
+// spacing always matches the available canvas size.
+function initBgAnimals() {
+  const types = ['penguin', 'shirokuma', 'chick', 'penguin', 'chick', 'shirokuma', 'penguin'];
+  const count = 7;
+  state.bgAnimals = [];
+  for (let i = 0; i < count; i++) {
+    const slotX = (W / count) * (i + 0.5) + rand(-18, 18);
+    // Alternate layers so back/front are spatially mixed across the width.
+    // 'front' = drawn AFTER the bowl (closer to camera, slightly bigger).
+    // 'back'  = drawn BEFORE the bowl (peeks out from behind it).
+    const layer = (i % 2 === 0) ? 'back' : 'front';
+    state.bgAnimals.push({
+      type: types[i % types.length],
+      x: clamp(slotX, 20, W - 20),
+      vx: (Math.random() < 0.5 ? -1 : 1) * rand(0.18, 0.55),
+      size: rand(20, 32),
+      hopT: rand(0.3, 2.0),     // seconds until next hop
+      hopPhase: 0,              // 0 when grounded; 0+ during hop arc (0..1)
+      bobPhase: rand(0, TAU),   // per-animal phase offset for idle bob
+      groundOffset: rand(-3, 3),// slight Y variation so they don't all align
+      hopHeightMul: rand(0.7, 1.4),
+      layer,
+    });
+  }
+}
+
+function updateBgAnimals(dt) {
+  if (!state.bgAnimals.length) return;
+
+  // 🐧 React to the game's energy level — excitement is computed in loop()
+  //    based on the current phase + cranking activity. 0 = calm, 1 = frenzy.
+  const ex = state.animalExcitement;
+  const isTitle = state.phase === 'title';
+  // base speed grows with excitement; title still gets a small extra boost
+  const speedMul = (isTitle ? 1.6 : 0.75) + ex * 1.2;
+  // smaller value = more frequent hops. Range: 2.2s at calm → 0.3s at frenzy
+  const hopFreq  = (1 - ex) * 1.9 + 0.3;
+  // hop heights also grow with excitement
+  const hopHeightBoost = 1 + ex * 0.6;
+
+  // 🦘 Sync-jump event: when triggered (e.g. TIME UP), force every animal to
+  //    leap simultaneously regardless of their hopT countdown
+  if (state.syncJumpT > 0.55) {
+    for (const a of state.bgAnimals) {
+      if (a.hopPhase <= 0) {
+        a.hopPhase = 0.0001;
+        // override the per-animal multiplier to a DRAMATIC synchronized jump
+        a.syncBoost = 3.0;
+      }
+    }
+    // ensure we only trigger once per event
+    state.syncJumpT = 0.55;
+  }
+
+  for (const a of state.bgAnimals) {
+    // Hop progression: 0 → 1 over ~0.5s
+    if (a.hopPhase > 0) {
+      a.hopPhase += dt * 0.05;
+      if (a.hopPhase >= 1) {
+        a.hopPhase = 0;
+        a.hopT = rand(hopFreq * 0.4, hopFreq * 1.4);
+        a.syncBoost = undefined; // reset after one hop
+      }
+    } else {
+      a.hopT -= dt / 60;
+      if (a.hopT <= 0) {
+        a.hopPhase = 0.0001;
+      }
+    }
+
+    // Horizontal roaming
+    a.x += a.vx * speedMul * dt;
+
+    // Bounce / wrap at canvas edges. During title phase: bounce off (so they
+    // dance in the visible area). During gameplay: wrap (they peek in & out).
+    if (isTitle) {
+      if (a.x < 25)        { a.x = 25;     a.vx =  Math.abs(a.vx); }
+      else if (a.x > W-25) { a.x = W - 25; a.vx = -Math.abs(a.vx); }
+    } else {
+      if (a.x < -30)       a.x = W + 30;
+      else if (a.x > W+30) a.x = -30;
+    }
+
+    // Store the height multiplier for draw to use
+    a._effectiveHopH = hopHeightBoost * (a.syncBoost || 1);
+  }
+}
+
+function drawBgAnimals(g, layer) {
+  if (!state.bgAnimals.length) return;
+  // Animals are ALWAYS present — they're the festival's life, scurrying around
+  // through every phase. Called twice per frame: once with 'back' (before the
+  // bowl) and once with 'front' (after the bowl) to create natural layering.
+
+  const t = performance.now() / 1000;
+  const groundY = g.bowlBottomY + 4 * g.scale;
+  // Front animals get a slight size boost + a touch lower Y so they read as
+  // "closer to camera" relative to the back-layer crowd.
+  const layerScale = (layer === 'front') ? 1.18 : 1.0;
+  const layerYAdd  = (layer === 'front') ? 6 * g.scale : 0;
+
+  for (const a of state.bgAnimals) {
+    if (a.layer !== layer) continue;
+
+    let yOff = 0;
+    if (a.hopPhase > 0) {
+      // Parabolic hop arc: sin(π·p) peaks in the middle
+      const hopBoost = a._effectiveHopH || 1;
+      yOff = -Math.sin(a.hopPhase * Math.PI) * a.size * 0.6 * a.hopHeightMul * hopBoost;
+    }
+    const screenSize = a.size * g.scale * layerScale;
+    if (screenSize < 6) continue; // too small to be worth drawing
+
+    const screenY = groundY + layerYAdd + a.groundOffset * g.scale + yOff * g.scale;
+
+    ctx.save();
+    ctx.translate(a.x, screenY);
+    // Face the direction of movement
+    if (a.vx < 0) ctx.scale(-1, 1);
+    const opts = { phase: a.bobPhase };
+    if (a.type === 'penguin')        drawPenguin(0, 0, screenSize, t, opts);
+    else if (a.type === 'shirokuma') drawShirokuma(0, 0, screenSize, t, opts);
+    else if (a.type === 'chick')     drawChick(0, 0, screenSize, t, opts);
+    ctx.restore();
+  }
+}
+
+// ---------- opening title screen ----------
+function drawTitleScreen(g) {
+  if (state.phase !== 'title') return;
+  const t = performance.now() / 1000;
+
+  // Vignette-style veil that's slightly darker on edges
+  const veil = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, Math.max(W, H) * 0.7);
+  veil.addColorStop(0, 'rgba(255, 248, 232, 0.18)');
+  veil.addColorStop(1, 'rgba(60, 30, 60, 0.35)');
+  ctx.fillStyle = veil;
+  ctx.fillRect(0, 0, W, H);
+
+  // ✨ Drifting sparkles around the title — DOUBLE the count + multi-color
+  const sparkleColors = ['#ffd84a','#ff5e7a','#4287d6','#6cba87','#a06cd5','#f08a4b'];
+  for (let i = 0; i < 18; i++) {
+    const a = t * 0.5 + i * (TAU / 18);
+    const radius = W * 0.38 + Math.sin(t * 0.7 + i * 1.3) * 14;
+    const sx = W / 2 + Math.cos(a) * radius;
+    const sy = H * 0.24 + Math.sin(a * 1.3 + i) * 38;
+    const ss = 4 + Math.sin(t * 3 + i) * 2.2;
+    drawSparkleStar(sx, sy, ss, sparkleColors[i % sparkleColors.length], 0.9);
+  }
+
+  // 🎆 Big background bloom behind the title
+  const bloomGrad = ctx.createRadialGradient(W / 2, H * 0.22, 0, W / 2, H * 0.22, 140);
+  bloomGrad.addColorStop(0, 'rgba(255,220,140,0.35)');
+  bloomGrad.addColorStop(1, 'rgba(255,220,140,0)');
+  ctx.fillStyle = bloomGrad;
+  ctx.fillRect(W / 2 - 200, H * 0.22 - 200, 400, 400);
+
+  // Decorative banner pill behind the title — with bigger float + slight rotation
+  ctx.save();
+  const titleYBase = H * 0.23 + Math.sin(t * 1.4) * 5;
+  const titleRot = Math.sin(t * 1.7) * 0.025;
+  ctx.translate(W / 2, titleYBase);
+  ctx.rotate(titleRot);
+
+  // Small festival tag above the title
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 14px "DotGothic16", monospace';
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('🎐 夏祭り限定スペシャル 🎐', 0, -64);
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('🎐 夏祭り限定スペシャル 🎐', 0, -64);
+
+  // Main title "カキ氷" — bigger with rainbow shadow stack
+  const titleHue = (t * 60) % 360;
+  ctx.font = 'bold 52px "Yusei Magic", serif';
+  // shadow stack
+  for (let i = 4; i >= 1; i--) {
+    ctx.fillStyle = `hsla(${(titleHue + i * 30) % 360}, 80%, 65%, 0.4)`;
+    ctx.fillText('カキ氷', i * 2, -10 + i * 2);
+  }
+  ctx.lineWidth = 12;
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('カキ氷', 0, -10);
+  ctx.fillStyle = '#ff5e7a';
+  ctx.fillText('カキ氷', 0, -10);
+
+  // Second line "フェスティバル"
+  ctx.font = 'bold 34px "Yusei Magic", serif';
+  for (let i = 4; i >= 1; i--) {
+    ctx.fillStyle = `hsla(${(titleHue + 180 + i * 30) % 360}, 80%, 65%, 0.4)`;
+    ctx.fillText('フェスティバル', i * 1.5, 36 + i * 1.5);
+  }
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText('フェスティバル', 0, 36);
+  ctx.fillStyle = '#4287d6';
+  ctx.fillText('フェスティバル', 0, 36);
+  ctx.restore();
+
+  // "クリックでスタート" CTA — bigger, with arrow wiggle and stronger pulse
+  const pulse = 1 + Math.sin(t * 4.5) * 0.10;
+  ctx.save();
+  ctx.translate(W / 2, H * 0.50);
+  ctx.scale(pulse, pulse);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Pill background with gradient
+  const ctaW = 240, ctaH = 52;
+  const grad = ctx.createLinearGradient(0, -ctaH / 2, 0, ctaH / 2);
+  grad.addColorStop(0, '#ffe88a');
+  grad.addColorStop(1, '#ffce4a');
+  ctx.fillStyle = grad;
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = 3.5;
+  roundRect(-ctaW / 2, -ctaH / 2, ctaW, ctaH, ctaH / 2);
+  ctx.fill();
+  ctx.stroke();
+  // double drop shadow
+  ctx.fillStyle = 'rgba(42,58,77,0.22)';
+  ctx.fillRect(-ctaW / 2 + 3, ctaH / 2, ctaW, 3);
+  ctx.fillStyle = 'rgba(42,58,77,0.10)';
+  ctx.fillRect(-ctaW / 2 + 6, ctaH / 2 + 3, ctaW - 6, 3);
+
+  ctx.font = 'bold 20px "Zen Maru Gothic", sans-serif';
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('▶ クリックでスタート！', 0, 1);
+  ctx.restore();
+
+  // Subtle bottom hint — bigger and more inviting
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 12px "DotGothic16", monospace';
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.strokeText('ハンドルを回して 30 秒で巨大カキ氷を作ろう！', W / 2, H * 0.58);
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('ハンドルを回して 30 秒で巨大カキ氷を作ろう！', W / 2, H * 0.58);
+  ctx.restore();
+}
+
+// ---------- main loop ----------
+let lastTime = performance.now();
+function loop() {
+  const now = performance.now();
+  let ms = now - lastTime;
+  // ⏰ Brief slow-mo during the TIME UP flash for cinematic punch
+  if (state.timeUpFlashT > 0.25) ms *= 0.45;
+  let dt = ms / 16.6;
+  if (dt > 3) dt = 3;
+  lastTime = now;
+
+  // Tick timer
+  if (state.phase === 'playing') {
+    state.timeLeft -= ms / 1000;
+    // ⏰ During the last 5 seconds, accumulate a warning pulse used for screen shake
+    if (state.timeLeft <= 5 && state.timeLeft > 0) {
+      state.warningPulseT += ms / 1000;
+    } else {
+      state.warningPulseT = 0;
+    }
+    if (state.timeLeft <= 0) {
+      state.timeLeft = 0;
+      finishGame();
+    }
+  } else {
+    state.warningPulseT = 0;
+  }
+
+  // 🎓 Tick the ready-phase hint timer (used to fade out the handle hint)
+  if (state.phase === 'ready') state.readyHintT += ms / 1000;
+  else state.readyHintT = 0;
+
+  // 🐧 Drive animal excitement based on the current phase
+  let targetExcitement = 0.15;
+  if (state.phase === 'title') targetExcitement = 0.95;
+  else if (state.phase === 'playing') {
+    // ramp by how fast they're cranking + last-5s panic boost
+    const rotRate = state.isDragging ? 0.6 : 0.25;
+    const lastSecBoost = state.timeLeft <= 5 ? 0.35 : 0;
+    targetExcitement = Math.min(1, rotRate + lastSecBoost);
+  }
+  else if (state.phase === 'finished') targetExcitement = 0.75;
+  else if (state.phase === 'eating')   targetExcitement = 0.9;
+  else if (state.phase === 'done')     targetExcitement = 0.85;
+  state.animalExcitement += (targetExcitement - state.animalExcitement) * 0.05 * dt;
+
+  // 🦘 Sync-jump countdown
+  if (state.syncJumpT > 0) state.syncJumpT = Math.max(0, state.syncJumpT - ms / 1000);
+
+  updateParticles(dt);
+  updateBgAnimals(dt);
+  updateClouds(dt);
+  updateFestivalBits(dt);
+  updatePileSparkles(dt);
+  updateFireworks(dt);
+  if (state.shakeT > 0) state.shakeT -= dt;
+  if (state.timeUpFlashT > 0) state.timeUpFlashT = Math.max(0, state.timeUpFlashT - ms / 1000);
+  if (state.recordFlashT > 0) state.recordFlashT = Math.max(0, state.recordFlashT - ms / 1000);
+
+  // ✨ Spawn pile sparkles during playing/finished as the ice catches light
+  if ((state.phase === 'playing' || state.phase === 'finished' || state.phase === 'eating')
+      && state.pileH > 10 && Math.random() < 0.16 + clamp(state.pileH / 600, 0, 0.35)) {
+    const g = geometry();
+    spawnPileSparkle(g);
+    // Sometimes spawn 2 at once for extra magic
+    if (Math.random() < 0.4) spawnPileSparkle(g);
+  }
+
+  // 🔥 Combo decay — if the player stalls > 0.75s, the combo resets
+  if (state.phase === 'eating' && state.comboCount > 0) {
+    const sinceLast = (now - state.comboLastT) / 1000;
+    if (sinceLast > 0.75) state.comboCount = 0;
+  }
+  if (state.comboCelebrateT > 0) state.comboCelebrateT = Math.max(0, state.comboCelebrateT - ms / 1000);
+
+  // 🍴 Auto-transition: once syrup is fully poured, jump to eating mode
+  if (state.phase === 'finished' && state.syrupCoating && state.syrupCoating.progress >= 1) {
+    startEating();
+  }
+
+  // celebration timing — the big celebration only fires at the very end (done).
+  if (state.celebrating) {
+    state.celebrationT += ms / 1000;
+  }
+  // Scene transition (e.g. finished -> eating) timer
+  if (state.transitionT > 0) {
+    state.transitionT = Math.max(0, state.transitionT - ms / 1000);
+  }
+
+  drawScene();
+  updateScoreUI();
+
+  requestAnimationFrame(loop);
+}
+
+function finishGame() {
+  state.phase = 'finished';
+  state.isDragging = false;
+  state.lastPointerAngle = null;
+  canvas.classList.remove('dragging');
+  // Freeze the achieved height for scoring purposes
+  state.frozenHeightCm = Math.round(state.pileH / 4);
+  state.frozenPileH = state.pileH;
+  state.frozenPileR = state.pileR;
+  // 🏔️ Save the best HEIGHT achievement (independent of score)
+  if (state.frozenHeightCm > state.bestHeight) {
+    state.bestHeight = state.frozenHeightCm;
+    state.heightNewRecord = true;
+    saveBestHeight(state.frozenHeightCm);
+  }
+  // enable syrup buttons
+  ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
+    document.getElementById(id).disabled = false;
+  });
+  document.getElementById('hint').textContent = '⏰ TIME UP! お好みのシロップを選ぼう ♪';
+  celebrate('⏰ TIME UP!');
+
+  // ⏰ Big white flash + shockwave + slight slow-mo for cinematic punch
+  state.timeUpFlashT = 1.0;
+  // 🦘 All animals leap together to celebrate the moment
+  state.syncJumpT = 0.7;
+  // Burst confetti from the top to commemorate
+  for (let i = 0; i < 28; i++) {
+    state.confettiBg.push({
+      x: rand(W * 0.2, W * 0.8),
+      y: rand(-30, 0),
+      vx: rand(-0.5, 0.5),
+      vy: rand(0.5, 1.3),
+      rot: rand(0, TAU),
+      vrot: rand(-0.08, 0.08),
+      color: ['#ff5e7a','#ffd84a','#6cba87','#4287d6','#f08a4b'][i % 5],
+      size: rand(4, 7),
+      shape: i % 3,
+    });
+  }
+
+  updatePhaseUI();
+  bounceControls();
+}
+
+function startCelebration() {
+  state.celebrating = true;
+  state.celebrationT = 0;
+
+  // Position characters in canvas coords (they don't follow camera)
+  // bowl center on canvas: W * 0.45, near bottom
+  const bowlCX = W * 0.45;
+  const ground = H - 56;        // feet rest at this y
+  state.characters = [
+    { type: 'penguin',   baseX: bowlCX - W * 0.32, baseY: ground,        entryT: 0.05, bobPhase: 0,   flip: false },
+    { type: 'shirokuma', baseX: bowlCX + W * 0.32, baseY: ground,        entryT: 0.20, bobPhase: 1.7, flip: true  },
+    { type: 'chick',     baseX: bowlCX + W * 0.22, baseY: H * 0.48,      entryT: 0.40, bobPhase: 3.0, flip: false },
+  ];
+
+  // Sparkles around the kakigori (in canvas coords too, so they stay framed)
+  const g = geometry();
+  const r  = state.pileR * g.scale;
+  const h  = state.pileH * g.scale;
+  const cx = g.bowlCenterX;
+  const baseY = g.bowlRimY;
+  state.sparkles = [];
+  for (let i = 0; i < 14; i++) {
+    const ang = (i / 14) * TAU - Math.PI / 2 + rand(-0.25, 0.25);
+    const dist = Math.max(r, 30) * (1.25 + rand(0, 0.65));
+    state.sparkles.push({
+      x: cx + Math.cos(ang) * dist,
+      y: (baseY - h * 0.55) + Math.sin(ang) * dist * 0.75,
+      phase: rand(0, TAU),
+      size: rand(3.5, 7.5),
+      color: ['#ffd166','#fff6a8','#ffe28a'][Math.floor(Math.random()*3)],
+    });
+  }
+}
+
+function startGame() {
+  state.phase = 'playing';
+  state.timeLeft = GAME_DURATION;
+  document.getElementById('hint').textContent = 'ぐるぐる回そう！！ ⟳';
+  updatePhaseUI();
+}
+
+function updateScoreUI() {
+  // HEIGHT — current during play, frozen after timer ends
+  let displayCm;
+  if (state.phase === 'ready' || state.phase === 'playing') {
+    displayCm = Math.round(state.pileH / 4);
+  } else {
+    displayCm = state.frozenHeightCm;
+  }
+  // Display in meters with 1 decimal place (e.g. 200cm → "2.0m")
+  const displayM = (displayCm / 100).toFixed(1);
+  document.getElementById('height').innerHTML = displayM + '<span class="unit">m</span>';
+
+  // ROTATIONS slot — repurposed during eating/done to show BITES / MULT
+  const rotEl = document.getElementById('rotations');
+  const rotLabel = document.querySelector('#rot-item .score-label');
+  if (state.phase === 'eating') {
+    rotLabel.textContent = 'BITES';
+    rotEl.textContent = state.eatingClicks + '/' + state.eatingMaxClicks;
+  } else if (state.phase === 'done') {
+    rotLabel.textContent = '× MULT';
+    rotEl.innerHTML = state.finalMultiplier.toFixed(1) + '<span class="unit">×</span>';
+  } else {
+    rotLabel.textContent = 'ROTATIONS';
+    rotEl.textContent = state.rotations;
+  }
+
+  // BEST — separate records for height (m) and score (pt)
+  // bestHeight is stored as a cm value (legacy/internal); convert to m for display
+  document.getElementById('best-height').textContent = (state.bestHeight / 100).toFixed(1);
+  document.getElementById('best-score').textContent  = state.bestScore.toFixed(1);
+
+  // 🎯 Best progress bars — visualize how close current is to personal best
+  // Height bar: current pile (or frozen) / best height
+  const curHeight = (state.phase === 'ready' || state.phase === 'playing')
+    ? state.pileH / 4
+    : state.frozenHeightCm;
+  const heightBar = document.getElementById('best-height-bar');
+  if (state.bestHeight > 0) {
+    const ratio = curHeight / state.bestHeight;
+    heightBar.style.width = Math.min(100, ratio * 100).toFixed(1) + '%';
+    heightBar.classList.toggle('maxed', ratio >= 1);
+  } else {
+    heightBar.style.width = (curHeight > 0 ? '100' : '0') + '%';
+    heightBar.classList.toggle('maxed', curHeight > 0);
+  }
+  // Score bar: only meaningful during/after eating
+  const scoreBar = document.getElementById('best-score-bar');
+  const curScore = (state.phase === 'done') ? state.finalScore
+                : (state.phase === 'eating') ? curHeight * state.eatingLiveMult
+                : 0;
+  if (state.bestScore > 0) {
+    const ratio = curScore / state.bestScore;
+    scoreBar.style.width = Math.min(100, ratio * 100).toFixed(1) + '%';
+    scoreBar.classList.toggle('maxed', ratio >= 1);
+  } else {
+    scoreBar.style.width = (curScore > 0 ? '100' : '0') + '%';
+    scoreBar.classList.toggle('maxed', curScore > 0);
+  }
+
+  // TIME — countdown during play, elapsed during eat, final after done
+  const timeEl = document.getElementById('time');
+  const timeItem = document.getElementById('time-item');
+  if (state.phase === 'eating' || state.phase === 'done') {
+    timeEl.innerHTML = state.eatingElapsed.toFixed(1) + '<span class="unit">s</span>';
+    timeItem.classList.remove('urgent');
+    timeItem.classList.toggle('done', state.phase === 'done');
+  } else {
+    const secs = Math.ceil(state.timeLeft);
+    timeEl.innerHTML = secs + '<span class="unit">s</span>';
+    timeItem.classList.toggle('urgent', state.phase === 'playing' && secs <= 5);
+    timeItem.classList.toggle('done',   state.phase === 'finished');
+  }
+}
+
+function celebrate(msg) {
+  const el = document.getElementById('celebrate');
+  el.textContent = msg;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+
+// Apply a bouncy entrance animation to the controls pill — used whenever the
+// pill becomes visible at a new phase, so the user can't miss what's there
+function bounceControls() {
+  const ctrls = document.getElementById('controls');
+  ctrls.classList.remove('reveal');
+  void ctrls.offsetWidth;
+  ctrls.classList.add('reveal');
+  setTimeout(() => ctrls.classList.remove('reveal'), 800);
+}
+
+// Show only the buttons that make sense for the current phase
+function updatePhaseUI() {
+  const phase = state.phase;
+  const showSyrup = phase === 'finished';
+  const showReset = phase === 'done';
+  ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
+    document.getElementById(id).style.display = showSyrup ? '' : 'none';
+  });
+  const resetBtn = document.getElementById('btn-reset');
+  resetBtn.style.display = showReset ? '' : 'none';
+  resetBtn.classList.toggle('big', phase === 'done');
+  const anyVisible = showSyrup || showReset;
+  const ctrls = document.getElementById('controls');
+  ctrls.classList.toggle('hidden', !anyVisible);
+  ctrls.classList.toggle('center', phase === 'done');
+  // Canvas cursor: pointer during eating + title to invite clicks
+  canvas.classList.toggle('eating', phase === 'eating' || phase === 'title');
+}
+
+// ---------- input ----------
+function pointerDown(e) {
+  // TITLE: any tap dismisses the opening screen and lets the player start
+  if (state.phase === 'title') {
+    e.preventDefault();
+    state.phase = 'ready';
+    document.getElementById('hint').textContent = 'ハンドルをグルグル回そう！⟳';
+    updatePhaseUI();
+    return;
+  }
+  // EATING: any canvas click = one bite
+  if (state.phase === 'eating') {
+    e.preventDefault();
+    const pt = getPointer(e);
+    eatBite(pt);
+    return;
+  }
+  // FINISHED or DONE: no cranking allowed
+  if (state.phase === 'finished' || state.phase === 'done') return;
+  e.preventDefault();
+  const pt = getPointer(e);
+  const g = geometry();
+  // any pointerdown near handle starts dragging; also allow dragging anywhere if near pivot region
+  const dx = pt.x - g.handlePivotX;
+  const dy = pt.y - g.handlePivotY;
+  const dist = Math.hypot(dx, dy);
+  // allow grabbing anywhere within reasonable range around handle
+  if (dist < g.armLen + 50) {
+    state.isDragging = true;
+    state.lastPointerAngle = Math.atan2(dy, dx);
+    canvas.classList.add('dragging');
+  }
+}
+
+// ---------- eating phase ----------
+function startEating() {
+  if (state.phase !== 'finished') return;
+  if (!state.syrupCoating) return; // need syrup first
+
+  state.phase = 'eating';
+  state.eatingClicks = 0;
+  state.eatingStartT = 0;
+  state.eatingElapsed = 0;
+  state.eatingLiveMult = 1;
+  // scale max-clicks to height (no upper cap — bigger piles = more clicks
+  // = a genuine "I worked hard" achievement)
+  state.eatingMaxClicks = Math.max(8, Math.round(state.frozenHeightCm / 4) + 6);
+  state.targetPileH = state.pileH;
+  state.targetPileR = state.pileR;
+
+  // 🎬 Scene transition flash + big prompt
+  state.transitionT = 1.6;
+
+  // disable any remaining syrup buttons (they should already be disabled)
+  ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+  document.getElementById('hint').textContent =
+    `🥄 連打して早食い勝負！ 残り ${state.eatingMaxClicks} 口！`;
+  updatePhaseUI();
+}
+
+function eatBite(pt) {
+  if (state.eatingClicks >= state.eatingMaxClicks) return;
+
+  // start timing on first bite
+  if (state.eatingClicks === 0) state.eatingStartT = performance.now();
+
+  state.eatingClicks++;
+  state.eatingElapsed = (performance.now() - state.eatingStartT) / 1000;
+
+  // 🔥 Combo tracking — bites within 0.55s of the previous one extend the combo
+  const now = performance.now();
+  if (state.comboLastT > 0 && (now - state.comboLastT) / 1000 < 0.55) {
+    state.comboCount++;
+  } else {
+    state.comboCount = 1;
+  }
+  state.comboLastT = now;
+  if (state.comboCount > state.comboBest) state.comboBest = state.comboCount;
+  // Trigger big celebration text at meaningful milestones
+  if (state.comboCount === 5 || state.comboCount === 10 || state.comboCount === 15 || state.comboCount === 20) {
+    state.comboCelebrateT = 1.0;
+    state.comboCelebrateN = state.comboCount;
+  }
+
+  // Live multiplier: clicks-per-second based
+  const cps = state.eatingClicks / Math.max(0.2, state.eatingElapsed);
+  state.eatingLiveMult = clamp(0.7 + cps * 0.3, 1.0, 5.0);
+
+  // Shrink the pile toward the next target size (eased in update loop)
+  const remaining = state.eatingMaxClicks - state.eatingClicks;
+  const ratio = remaining / state.eatingMaxClicks;
+  state.targetPileH = state.frozenPileH * ratio;
+  state.targetPileR = state.frozenPileR * ratio;
+
+  // Particle burst — chunks fly toward upper-right (mouth direction)
+  spawnBiteParticles();
+
+  // Chomp visual feedback (anchored to the multiplier badge in drawCelebration)
+  const words = ['ガブッ！','ガリッ！','モグッ','パクッ','うまっ！'];
+  state.chompFx.push({
+    life: 0,
+    word: words[Math.floor(Math.random() * words.length)],
+  });
+  if (state.chompFx.length > 5) state.chompFx.shift();
+
+  // Wobble + multiplier badge pop
+  state.shakeT = 6;
+  state.multBadgePulse = 1.0;
+
+  // Update remaining count in hint
+  document.getElementById('hint').textContent =
+    `🥄 のこり ${state.eatingMaxClicks - state.eatingClicks} 口！`;
+
+  // 💥 FINAL BITE — extra explosion + flash + camera kick
+  if (state.eatingClicks >= state.eatingMaxClicks) {
+    // Trigger time-up-like flash for the climactic ending
+    state.timeUpFlashT = 0.5;
+    state.shakeT = 14;
+    // Second wave of particles
+    spawnBiteParticles();
+    spawnBiteParticles();
+    finishEating();
+  }
+}
+
+function spawnBiteParticles() {
+  const g = geometry();
+  const cx = g.bowlCenterX;
+  const baseY = g.bowlRimY;
+  const h = state.pileH * g.scale;
+  const r = state.pileR * g.scale;
+  const top = baseY - h;
+  const c  = state.syrupCoating ? state.syrupCoating.color     : '#dceffa';
+  const cd = state.syrupCoating ? state.syrupCoating.darkColor : '#9bc4d4';
+
+  // 💥 Big explosion: 28 chunks + 12 sparkles + 6 sweet drips
+  for (let i = 0; i < 28; i++) {
+    const ang = -Math.PI / 2 + rand(-1.2, 1.2);
+    const speed = rand(4, 9);
+    const isSyrup = Math.random() < 0.45;
+    state.particles.push({
+      x: cx + rand(-r * 0.45, r * 0.45),
+      y: top + rand(-6, 8),
+      vx: Math.cos(ang) * speed + rand(-0.8, 0.8),
+      vy: Math.sin(ang) * speed - rand(0.8, 2.4),
+      vrot: rand(-0.25, 0.25),
+      rot: rand(0, TAU),
+      size: isSyrup ? rand(3, 6) : rand(3, 6.5),
+      tilt: rand(0.5, 1.0),
+      life: 0,
+      color: isSyrup ? c : null,
+      stroke: isSyrup ? cd : null,
+      isBite: true,
+    });
+  }
+  // 12 white-hot sparkle particles for added pop
+  for (let i = 0; i < 12; i++) {
+    const ang = -Math.PI / 2 + rand(-1.5, 1.5);
+    const speed = rand(5, 11);
+    state.particles.push({
+      x: cx + rand(-r * 0.4, r * 0.4),
+      y: top + rand(-8, 4),
+      vx: Math.cos(ang) * speed,
+      vy: Math.sin(ang) * speed - rand(1.0, 2.5),
+      vrot: rand(-0.4, 0.4),
+      rot: rand(0, TAU),
+      size: rand(1.5, 3.2),
+      tilt: 1,
+      life: 0,
+      color: '#ffffff',
+      stroke: '#ffe0ad',
+      isBite: true,
+      isSpark: true,
+    });
+  }
+  // Camera kick on every bite
+  state.shakeT = Math.max(state.shakeT, 9);
+}
+
+function finishEating() {
+  state.phase = 'done';
+  state.eatingElapsed = (performance.now() - state.eatingStartT) / 1000;
+  // Final multiplier
+  const cps = state.eatingMaxClicks / Math.max(0.4, state.eatingElapsed);
+  state.finalMultiplier = clamp(0.7 + cps * 0.3, 1.0, 5.0);
+
+  // 🔥 Combo bonus: best combo this run translates to a small extra (up to ×1.2)
+  const comboBonus = 1 + Math.min(0.2, state.comboBest * 0.012);
+
+  // Final score = height_cm × multiplier × combo
+  state.finalScore = Math.round(
+    state.frozenHeightCm * state.finalMultiplier * comboBonus * 10
+  ) / 10;
+
+  // ★ Save the best SCORE achievement (independent of height)
+  if (state.finalScore > state.bestScore) {
+    state.bestScore = state.finalScore;
+    saveBestScore(state.finalScore);
+    state.scoreNewRecord = true;
+  }
+
+  // Final praise label combining everything
+  const t = state.eatingElapsed;
+  const speedLabel =
+        t < 1.5 ? '⚡ 神速！'
+      : t < 2.5 ? '🔥 爆食い！'
+      : t < 4.0 ? '✨ 早食い！'
+      : t < 7.0 ? '👍 いいペース'
+      :           '😋 完食';
+
+  // Determine record prefix: W new record / height only / score only / none
+  let recordPrefix = '';
+  if (state.heightNewRecord && state.scoreNewRecord) recordPrefix = '🎉 W新記録！ ';
+  else if (state.heightNewRecord)                    recordPrefix = '🏔️ 高さ新記録！ ';
+  else if (state.scoreNewRecord)                     recordPrefix = '★ スコア新記録！ ';
+
+  const headline = recordPrefix + speedLabel;
+  const heightM  = (state.frozenHeightCm / 100).toFixed(2);
+  let subline = `${heightM}m × ${state.finalMultiplier.toFixed(1)}倍`;
+  if (state.comboBest >= 5)     subline += ` × 🔥${comboBonus.toFixed(2)}`;
+  subline += ` = ${state.finalScore}pt`;
+  state.praiseLabel = headline + '\n' + subline;
+
+  document.getElementById('hint').textContent = '🎉 完食！ もう1回？ → 🔄 もう1回！';
+  celebrate('🎉 ごちそうさま！');
+  // 🎉 The big celebration only fires at the END (after eating)
+  startCelebration();
+  // 🦘 Animals all leap at completion
+  state.syncJumpT = 0.8;
+  // 🎊 New record extra fanfare — fireworks, confetti rain, double cheer
+  if (state.heightNewRecord || state.scoreNewRecord) {
+    // schedule a 2nd & 3rd sync-jump for a "triple cheer"
+    setTimeout(() => { state.syncJumpT = 0.7; }, 500);
+    setTimeout(() => { state.syncJumpT = 0.7; }, 1000);
+    // burst extra background confetti (heavy)
+    for (let i = 0; i < 60; i++) {
+      state.confettiBg.push({
+        x: rand(0, W),
+        y: rand(-40, 0),
+        vx: rand(-0.8, 0.8),
+        vy: rand(0.6, 1.8),
+        rot: rand(0, TAU),
+        vrot: rand(-0.12, 0.12),
+        color: ['#ff5e7a','#ffd84a','#6cba87','#4287d6','#f08a4b','#a06cd5'][i % 6],
+        size: rand(5, 10),
+        shape: i % 3,
+      });
+    }
+    // 🎆 Salvo of fireworks across the sky
+    spawnFirework();
+    setTimeout(() => spawnFirework(), 200);
+    setTimeout(() => spawnFirework(), 450);
+    setTimeout(() => spawnFirework(), 700);
+    setTimeout(() => spawnFirework(), 950);
+    setTimeout(() => spawnFirework(), 1200);
+    // 🌈 Trigger a full-screen rainbow flash via state flag
+    state.recordFlashT = 0.9;
+    // ✨ Flash the BEST scoreboard card
+    const bestCard = document.querySelector('.score-item.best');
+    if (bestCard) {
+      bestCard.classList.remove('recording');
+      void bestCard.offsetWidth;
+      bestCard.classList.add('recording');
+      setTimeout(() => bestCard.classList.remove('recording'), 2600);
+    }
+  }
+  updatePhaseUI();
+  bounceControls();
+
+  // 🛡️ Lockout: prevent the rapid-clicking momentum from accidentally hitting
+  // the freshly-revealed "もう1回！" button. Disable it for 1.2s — long enough
+  // for the user to register that the game has ended and re-target.
+  const resetBtn = document.getElementById('btn-reset');
+  resetBtn.disabled = true;
+  resetBtn.classList.add('locked');
+  setTimeout(() => {
+    resetBtn.disabled = false;
+    resetBtn.classList.remove('locked');
+  }, 1200);
+}
+
+
+function pointerMove(e) {
+  if (!state.isDragging) return;
+  e.preventDefault();
+  const pt = getPointer(e);
+  const g = geometry();
+  const a = Math.atan2(pt.y - g.handlePivotY, pt.x - g.handlePivotX);
+  let delta = a - state.lastPointerAngle;
+  // wrap
+  if (delta > Math.PI) delta -= TAU;
+  if (delta < -Math.PI) delta += TAU;
+
+  // ignore tiny/huge spurious deltas
+  if (Math.abs(delta) > Math.PI * 0.8) {
+    state.lastPointerAngle = a;
+    return;
+  }
+  if (Math.abs(delta) < 0.001) return;
+
+  state.handleAngle += delta;
+  state.totalRad += Math.abs(delta);
+  state.lastPointerAngle = a;
+
+  // first meaningful crank kicks off the 30s countdown
+  if (state.phase === 'ready') startGame();
+
+  const newRotations = Math.floor(state.totalRad / TAU);
+  if (newRotations !== state.rotations) {
+    const rotDiff = newRotations - state.rotations;
+    state.rotations = newRotations;
+    // 🎁 Rotation bonus: reward actual cranking over fast mouse wiggling
+    state.shavings += 15 * rotDiff;
+    updatePile();
+    // Flash ROTATIONS scoreboard cell + a quick bonus FX near the machine
+    const rotItem = document.getElementById('rot-item');
+    rotItem.classList.remove('flash');
+    void rotItem.offsetWidth;
+    rotItem.classList.add('flash');
+    spawnRotationBonusFx();
+  }
+
+  // spawn shavings proportional to rotation distance (slightly reduced so
+  // rotation bonuses feel more impactful relative to wiggle-spam)
+  const amount = Math.min(10, Math.max(1, Math.round(Math.abs(delta) * 11)));
+  spawnShavings(amount, a);
+}
+
+function pointerUp(e) {
+  state.isDragging = false;
+  state.lastPointerAngle = null;
+  canvas.classList.remove('dragging');
+}
+
+canvas.addEventListener('mousedown', pointerDown);
+window.addEventListener('mousemove', pointerMove);
+window.addEventListener('mouseup', pointerUp);
+
+canvas.addEventListener('touchstart', pointerDown, { passive: false });
+window.addEventListener('touchmove', pointerMove, { passive: false });
+window.addEventListener('touchend', pointerUp);
+window.addEventListener('touchcancel', pointerUp);
+
+// ---------- syrup ----------
+
+// helper: shift a hex color toward white or black for highlights/shadows
+function shadeHex(hex, amt) {
+  const h = hex.replace('#','');
+  const num = parseInt(h.length === 3
+    ? h.split('').map(c => c + c).join('')
+    : h, 16);
+  let r = (num >> 16) & 0xff;
+  let gr = (num >> 8) & 0xff;
+  let b = num & 0xff;
+  if (amt > 0) {
+    r  = Math.round(r  + (255 - r)  * amt);
+    gr = Math.round(gr + (255 - gr) * amt);
+    b  = Math.round(b  + (255 - b)  * amt);
+  } else {
+    const a = 1 + amt;
+    r  = Math.round(r  * a);
+    gr = Math.round(gr * a);
+    b  = Math.round(b  * a);
+  }
+  return '#' + [r, gr, b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function pourSyrup(color) {
+  if (state.phase !== 'finished') return;
+  if (state.syrupCoating) return; // already poured
+
+  // Generate organic features that combine into one continuous silhouette.
+  const features = [];
+
+  const numDrips = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < numDrips; i++) {
+    features.push({
+      nx:    rand(-0.82, 0.82),
+      depth: rand(0.42, 0.85),
+      width: rand(0.12, 0.24),
+      power: rand(0.6, 1.4),
+      skew:  rand(-0.35, 0.35),
+      delay: rand(0, 0.30),
+    });
+  }
+
+  const numBumps = 5 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < numBumps; i++) {
+    features.push({
+      nx:    rand(-0.95, 0.95),
+      depth: rand(0.05, 0.22),
+      width: rand(0.18, 0.36),
+      power: rand(1.0, 2.2),
+      skew:  rand(-0.3, 0.3),
+      delay: rand(0, 0.20),
+    });
+  }
+
+  state.syrupCoating = {
+    color,
+    lightColor: shadeHex(color, 0.40),
+    darkColor:  shadeHex(color, -0.22),
+    features,
+    noiseSeed: Math.random() * 1000,
+    progress: 0,
+    durationFrames: 55,
+  };
+
+  state.syrupDrops = [];
+
+  const map = {
+    '#e94560': 'btn-ichigo',
+    '#6cba87': 'btn-melon',
+    '#4287d6': 'btn-blue',
+    '#f2c94c': 'btn-lemon',
+  };
+  ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
+    document.getElementById(id).classList.remove('selected');
+  });
+  if (map[color]) document.getElementById(map[color]).classList.add('selected');
+
+  celebrate('🍧 シロップ完了！');
+  document.getElementById('hint').textContent = '🍧 美味しそう…！';
+
+  // 🔒 Commit — disable ALL syrup buttons (no re-pour, no layering)
+  ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+}
+
+function resetGame() {
+  state.shavings = 0;
+  state.rotations = 0;
+  state.totalRad = 0;
+  state.pileH = 0;
+  state.pileR = 0;
+  state.particles = [];
+  state.syrupDrops = [];
+  state.syrupCoating = null;
+  state.fluff = [];
+  state.handleAngle = 0;
+  state.newRecord = false;
+  state.heightNewRecord = false;
+  state.scoreNewRecord = false;
+  state.phase = 'ready';
+  state.timeLeft = GAME_DURATION;
+  // eating reset
+  state.eatingClicks = 0;
+  state.eatingStartT = 0;
+  state.eatingElapsed = 0;
+  state.eatingLiveMult = 1;
+  state.frozenHeightCm = 0;
+  state.frozenPileH = 0;
+  state.frozenPileR = 0;
+  state.targetPileH = 0;
+  state.targetPileR = 0;
+  state.finalMultiplier = 1;
+  state.finalScore = 0;
+  state.multBadgePulse = 0;
+  state.chompFx = [];
+  state.rotationFx = [];
+  state.transitionT = 0;
+  // celebration cleanup (zoom will animate back to 1)
+  state.celebrating = false;
+  state.celebrationT = 0;
+  state.characters = [];
+  state.sparkles = [];
+  state.praiseLabel = '';
+  // 🆕 reset all brushup state
+  state.pileSparkles = [];
+  state.timeUpFlashT = 0;
+  state.warningPulseT = 0;
+  state.comboCount = 0;
+  state.comboLastT = 0;
+  state.comboBest = 0;
+  state.comboCelebrateT = 0;
+  state.readyHintT = 0;
+  state.syncJumpT = 0;
+  state.fireworks = [];
+  state.recordFlashT = 0;
+  // disable + deselect syrup buttons
+  ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
+    const el = document.getElementById(id);
+    el.disabled = true;
+    el.classList.remove('selected');
+  });
+  document.getElementById('hint').textContent = 'ハンドルを回すと 30 秒のタイマー開始！';
+  updatePhaseUI();
+}
+
+// ---------- init ----------
+window.addEventListener('resize', resize);
+resize();
+updatePhaseUI();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
