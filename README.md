@@ -28,10 +28,14 @@ python3 -m http.server 8765
 ## ロードマップ (M1)
 
 - [x] M1.1 `index.html` 整備 + 起動確認
-- [ ] M1.2 モード選択画面 skeleton
-- [ ] M1.3 ごほうび制作モード雛形
-- [ ] M1.4 UX 整理 (英数字ラベル日本語化)
-- [ ] M1.5 画像差込先 placeholder + プロンプト下書き
+- [x] M1.2 モード選択画面 skeleton (title → mode-select → ready の 3 段遷移)
+- [x] M1.3 ごほうび制作モード雛形 (タイマー/連打/multiplier なし、 「できた！」 ボタン)
+- [x] M1.4 UX 整理 (scoreboard 英語ラベルを ひらがな化)
+- [x] M1.5 画像差込先 placeholder + プロンプト下書き (`docs/image-prompts.md`)
+
+## 画像アセット
+
+`docs/image-prompts.md` に生成プロンプト下書きあり。 画像は user が手動生成 → `assets/images/` に配置 → ブラウザリロードで反映 (M1.5 では `title-key.png` のみ HTML 差込済、 他は M2 で順次対応)。
 
 ## 公開先想定
 

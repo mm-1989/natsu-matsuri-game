@@ -479,6 +479,15 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   margin: 0;
 }
 
+.title-key {
+  width: clamp(180px, 60vw, 280px);
+  max-height: 200px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  filter: drop-shadow(3px 4px 0 rgba(95,168,196,0.25));
+}
+
 .ms-buttons {
   display: flex;
   gap: 18px;
@@ -587,6 +596,12 @@ button.syrup.selected:hover { transform: translate(0, 0); }
     <canvas id="game"></canvas>
     <div class="celebrate" id="celebrate"></div>
     <div class="mode-select hidden" id="mode-select">
+      <!-- title-key.png は user が assets/images/title-key.png に配置すると自動表示。
+           ファイル不在時は onerror で非表示にし、 H2 タイトルだけが見える状態に fallback。 -->
+      <img class="title-key" id="title-key"
+           src="assets/images/title-key.png"
+           alt=""
+           onerror="this.style.display='none'">
       <h2 class="ms-title">どっちで あそぶ？</h2>
       <div class="ms-buttons">
         <button class="ms-btn ms-reward" type="button" id="btn-mode-reward">
