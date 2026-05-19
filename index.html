@@ -571,12 +571,85 @@ button.syrup.selected:hover { transform: translate(0, 0); }
 
 .ms-title {
   font-family: 'Yusei Magic', serif;
-  font-size: clamp(24px, 6vw, 32px);
+  font-size: clamp(22px, 5.5vw, 28px);
   color: var(--ice-deep);
   text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(95,168,196,0.25);
   letter-spacing: 0.04em;
   text-align: center;
   margin: 0;
+}
+
+.ms-subtitle {
+  font-family: 'Yusei Magic', serif;
+  font-size: clamp(18px, 4.5vw, 22px);
+  color: var(--ice-deep);
+  text-shadow: 1px 1px 0 #fff;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 0;
+  opacity: 0.85;
+}
+
+/* 屋台タイル段 (= ハイブリッド型ホームメニューの上段) */
+.ms-stalls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ms-stall {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-weight: 900;
+  width: clamp(90px, 24vw, 110px);
+  min-height: 100px;
+  padding: 8px 6px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  letter-spacing: 0.04em;
+  background: #fff5e0;
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.ms-stall:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.ms-stall:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+
+.ms-stall.ms-stall-active {
+  background: #ffe1a8;
+  border-color: var(--ink);
+  /* 「いま選ばれてる」 = 軽く強調 */
+}
+
+.ms-stall.ms-stall-coming {
+  background: #ecebe5;
+  color: #8e8b81;
+  opacity: 0.65;
+  cursor: not-allowed;
+  border-style: dashed;
+  border-color: #b7b3a6;
+  box-shadow: none;
+}
+.ms-stall.ms-stall-coming:hover { transform: none; box-shadow: none; }
+
+.ms-stall-emoji {
+  font-size: 30px;
+  line-height: 1;
+}
+.ms-stall-label {
+  font-size: 14px;
+  font-weight: 900;
+}
+.ms-stall-sub {
+  font-family: 'DotGothic16', monospace;
+  font-size: 10px;
+  opacity: 0.7;
 }
 
 .title-key {
@@ -696,13 +769,33 @@ button.syrup.selected:hover { transform: translate(0, 0); }
     <canvas id="game"></canvas>
     <div class="celebrate" id="celebrate"></div>
     <div class="mode-select hidden" id="mode-select">
-      <!-- title-key.png は user が assets/images/title-key.png に配置すると自動表示。
-           ファイル不在時は onerror で非表示にし、 H2 タイトルだけが見える状態に fallback。 -->
       <img class="title-key" id="title-key"
            src="assets/images/title-key.png"
            alt=""
            onerror="this.style.display='none'">
-      <h2 class="ms-title">どっちで あそぶ？</h2>
+
+      <!-- 上段: 屋台タイル (= ハイブリッド型ホームメニュー / Codex 案 C)。
+           今は かき氷 1 つ active、 残り 2 つは じゅんびちゅう。 第 2 屋台 (M12+) で順次差替。 -->
+      <h2 class="ms-title">どの 屋台で あそぶ？</h2>
+      <div class="ms-stalls">
+        <button class="ms-stall ms-stall-active" type="button" id="btn-stall-kakigori">
+          <span class="ms-stall-emoji">🍧</span>
+          <span class="ms-stall-label">かき氷</span>
+        </button>
+        <div class="ms-stall ms-stall-coming" aria-hidden="true">
+          <span class="ms-stall-emoji">☁️</span>
+          <span class="ms-stall-label">じゅんび</span>
+          <span class="ms-stall-sub">ちゅう</span>
+        </div>
+        <div class="ms-stall ms-stall-coming" aria-hidden="true">
+          <span class="ms-stall-emoji">🐟</span>
+          <span class="ms-stall-label">じゅんび</span>
+          <span class="ms-stall-sub">ちゅう</span>
+        </div>
+      </div>
+
+      <!-- 下段: 共通モード (= 屋台が増えても同じ位置に固定、 子供が学び直さない) -->
+      <h3 class="ms-subtitle">どっちで あそぶ？</h3>
       <div class="ms-buttons">
         <button class="ms-btn ms-reward" type="button" id="btn-mode-reward">
           <span class="ms-emoji">🍧</span>
@@ -790,6 +883,7 @@ const state = {
   lastSpawnTime: 0,
   // timer
   phase: 'title',         // 'title' | 'mode-select' | 'ready' | 'playing' | 'finished' | 'reveal' | 'eating' | 'done'
+  activity: 'kakigori',   // M11: 屋台種別 ('kakigori' | future: 'cottoncandy' | 'kingyo' | ...)
   mode: null,             // 'reward' | 'challenge' — set after the player picks on mode-select.
                           // M1.2: both modes share the same behaviour; M1.3 splits reward mode.
   revealT: 0,             // reveal phase の経過秒 (= reward 専用、 2.5s で auto done)
@@ -3837,6 +3931,7 @@ window.addEventListener('touchcancel', pointerUp);
 // ---------- mode select ----------
 function selectMode(mode) {
   sndButton();
+  state.activity = 'kakigori';  // M11: 現状は屋台 1 つだけ、 第 2 屋台で動的に
   state.mode = mode;
   state.phase = 'ready';
   document.getElementById('hint').textContent = 'ハンドルを グルグル まわそう！⟳';
@@ -3844,6 +3939,9 @@ function selectMode(mode) {
 }
 document.getElementById('btn-mode-reward').addEventListener('click', () => selectMode('reward'));
 document.getElementById('btn-mode-challenge').addEventListener('click', () => selectMode('challenge'));
+
+// 屋台タイル: 現状はかき氷 1 つだけ。 click で「選んでる」 fb音だけ鳴らす (= 模擬的選択感)
+document.getElementById('btn-stall-kakigori').addEventListener('click', () => sndButton());
 
 // reward モード: 「できた！」 ボタンで finished フェーズへ (= タイマー切れの代わり)
 document.getElementById('btn-done').addEventListener('click', () => {
