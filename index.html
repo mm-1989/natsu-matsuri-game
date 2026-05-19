@@ -3,7 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>ふわふわ かき氷チャレンジ</title>
+<title>夏祭り かき氷フェスティバル</title>
+<meta name="description" content="幼児〜小学校低学年向け、 ハンドル回してタップで遊ぶ夏祭りかき氷ゲーム">
+
+<!-- favicon + PWA -->
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/images/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e94560">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="かき氷フェス">
+
+<!-- OGP / Twitter Card -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="夏祭り かき氷フェスティバル">
+<meta property="og:description" content="幼児〜小学校低学年向け、 ハンドル回してタップで遊ぶ夏祭りかき氷ゲーム">
+<meta property="og:url" content="https://mm-1989.github.io/natsu-matsuri-game/">
+<meta property="og:image" content="https://mm-1989.github.io/natsu-matsuri-game/assets/images/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:site_name" content="夏祭り かき氷フェスティバル">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="夏祭り かき氷フェスティバル">
+<meta name="twitter:description" content="幼児〜小学校低学年向け、 ハンドル回してタップで遊ぶ夏祭りかき氷ゲーム">
+<meta name="twitter:image" content="https://mm-1989.github.io/natsu-matsuri-game/assets/images/og-image.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&family=DotGothic16&display=swap" rel="stylesheet">
@@ -3630,6 +3656,17 @@ setTimeout(() => {
     updatePhaseUI();
   }
 }, 1800);
+
+// PWA: service worker 登録 — オフライン動作 + ホームに追加 で使う
+// localhost ではスコープ干渉に注意 (= 他プロジェクトと同じ origin の場合)、
+// GitHub Pages では /natsu-matsuri-game/ 配下に scope 限定。
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((err) => {
+      console.warn('SW registration failed:', err);
+    });
+  });
+}
 </script>
 </body>
 </html>

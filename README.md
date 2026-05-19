@@ -9,6 +9,9 @@
 - スマホ・PC ブラウザどちらでも動作
 - インストール不要、 タップだけで遊べる
 - 数秒のスプラッシュ後にモード選択画面が出ます
+- **「ホームに追加」 で アプリのように使えます** (= PWA、 オフライン対応)
+  - iPhone Safari: 共有 → ホーム画面に追加
+  - Android Chrome: メニュー → ホーム画面に追加
 
 ## モード
 
@@ -34,10 +37,18 @@ python3 -m http.server 8765
 natsu-matsuri-game/
 ├── index.html                      エントリポイント
 ├── kakigori.html                   当初モックアップ (参考用)
+├── manifest.json                   PWA マニフェスト
+├── sw.js                           service worker (オフライン対応)
 ├── assets/images/
+│   ├── favicon-32.png              タブアイコン
+│   ├── icon-192.png                PWA アイコン (Android)
+│   ├── icon-512.png                PWA アイコン (高解像度)
+│   ├── og-image.png                OGP / Twitter Card 画像 (1200×630)
 │   └── sprites/                    暫定 sprite PNG (キャラ 3 / 機械 / 器)
 ├── docs/image-prompts.md           画像生成プロンプト下書き
-├── tools/export-sprites.html       procedural → sprite 書き出しツール
+├── tools/
+│   ├── export-sprites.html         procedural → sprite 書き出しツール
+│   └── export-pwa-icons.html       procedural → PWA icon / OG image 書き出しツール
 └── README.md
 ```
 
@@ -60,11 +71,18 @@ natsu-matsuri-game/
 - [x] Codex レビュー反映 (scoreboard 非表示制御、 シロップ banner 縮小)
 - [x] Primary (中央 pill) と Safety-net (左下ホーム) の物理分離
 
-### M4 — 公開 (in progress)
+### M4 — 公開 ✅
 - [x] master → main rename
-- [ ] GitHub リポジトリ作成 (= user 操作)
-- [ ] 初回 push
-- [ ] GitHub Pages 有効化
+- [x] GitHub リポジトリ作成
+- [x] 初回 push
+- [x] GitHub Pages 有効化
+
+### M5 — PWA + OGP + favicon ✅
+- [x] favicon-32 / icon-192 / icon-512 / og-image 暫定生成 (`tools/export-pwa-icons.html`)
+- [x] manifest.json (= ホームに追加、 PWA)
+- [x] sw.js (= オフライン対応、 cache 戦略: HTML network-first / 他 cache-first)
+- [x] index.html head に link/meta/OGP/Twitter Card 追加
+- [x] body 末尾に SW register
 
 ## 画像アセット
 

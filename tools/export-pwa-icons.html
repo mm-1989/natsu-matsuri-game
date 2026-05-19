@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>PWA Icon + OGP Image Export</title>
+<link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+<style>
+body { font-family: monospace; background: #2a3a4d; color: #fff; padding: 20px; margin: 0; }
+h1 { font-size: 16px; opacity: 0.7; margin: 0 0 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin: 12px 0; }
+.cell { background: #1a2333; padding: 10px; border-radius: 6px; text-align: center; }
+.cell canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; image-rendering: -webkit-optimize-contrast; }
+.cell .name { font-size: 11px; color: #ffd84a; margin-top: 6px; font-weight: 700; }
+.cell .size { font-size: 10px; opacity: 0.5; }
+button { padding: 10px 22px; background: #ffce4a; color: #2a3a4d; border: 2px solid #2a3a4d; border-radius: 16px; font-weight: 700; cursor: pointer; font-family: monospace; }
+.log { font-size: 11px; opacity: 0.7; margin-top: 12px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; white-space: pre-line; }
+</style>
+</head>
+<body>
+<h1>🎐 PWA Icon + OGP Image Export</h1>
+<div class="grid" id="grid"></div>
+<button id="download-all">📥 Download All</button>
+<div class="log" id="log"></div>
+
+<script>
+const TAU = Math.PI * 2;
+let ctx;
+const log = (s) => { document.getElementById('log').textContent += s + '\n'; };
+
+// ============ procedural アイコン描画 ============
+
+// 中央寄せの「かき氷シンボル」 を w x h 内に描く。 padding 比率で外周余白を確保。
+function drawKakigoriSymbol(W, H, opts = {}) {
+  const pad = opts.pad || 0.05;
+  const lineScale = opts.lineScale || 1;
+  // 背景: クリーム色の角丸 (= app icon の鉄板)
+  const bgRadius = Math.min(W, H) * 0.22;
+  ctx.fillStyle = '#fff4dc';
+  roundRect(0, 0, W, H, bgRadius);
+  ctx.fill();
+
+  // 上空: 提灯 1 個 (= 装飾)
+  if (opts.lanterns !== false) {
+    const lx = W * 0.18, ly = H * 0.18, ls = Math.min(W, H) * 0.07;
+    ctx.fillStyle = '#ff5e7a';
+    ctx.beginPath();
+    ctx.ellipse(lx, ly, ls * 0.7, ls * 0.85, 0, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = '#2a3a4d';
+    ctx.lineWidth = Math.max(1, 1.6 * lineScale);
+    ctx.stroke();
+    // ribbing
+    ctx.beginPath();
+    ctx.moveTo(lx, ly - ls * 0.85);
+    ctx.lineTo(lx, ly - ls * 1.1);
+    ctx.stroke();
+  }
+
+  // 器 (= 楕円)
+  const bowlCY = H * 0.78;
+  const bowlW = W * 0.72;
+  const bowlH = H * 0.10;
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = Math.max(1, 3 * lineScale);
+  // 器の本体 (= 半円)
+  ctx.beginPath();
+  ctx.moveTo(W/2 - bowlW/2, bowlCY);
+  ctx.quadraticCurveTo(W/2 - bowlW/2, bowlCY + bowlH * 2.6, W/2 - bowlW * 0.30, bowlCY + bowlH * 2.4);
+  ctx.lineTo(W/2 + bowlW * 0.30, bowlCY + bowlH * 2.4);
+  ctx.quadraticCurveTo(W/2 + bowlW/2, bowlCY + bowlH * 2.6, W/2 + bowlW/2, bowlCY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // 器のリム (= 楕円上面)
+  ctx.fillStyle = '#dceffa';
+  ctx.beginPath();
+  ctx.ellipse(W/2, bowlCY, bowlW/2, bowlH, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+
+  // 氷山 (= 白い dome)
+  const iceCX = W/2;
+  const iceBaseY = bowlCY - 2 * lineScale;
+  const iceR = bowlW * 0.42;
+  const iceH = H * 0.42;
+  const iceGrad = ctx.createLinearGradient(iceCX, iceBaseY - iceH, iceCX, iceBaseY);
+  iceGrad.addColorStop(0, '#fff');
+  iceGrad.addColorStop(0.6, '#f0faff');
+  iceGrad.addColorStop(1, '#c8e0e8');
+  ctx.fillStyle = iceGrad;
+  ctx.beginPath();
+  ctx.moveTo(iceCX - iceR, iceBaseY);
+  for (let x = -iceR; x <= iceR; x += iceR / 20) {
+    const nx = x / iceR;
+    const y = iceBaseY - iceH * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+    ctx.lineTo(iceCX + x, y);
+  }
+  ctx.lineTo(iceCX + iceR, iceBaseY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#9bc4d4';
+  ctx.lineWidth = Math.max(1, 1.5 * lineScale);
+  ctx.stroke();
+
+  // シロップ (= 赤い垂れ、 上半分のみ)
+  ctx.fillStyle = '#e94560';
+  ctx.beginPath();
+  ctx.moveTo(iceCX - iceR * 0.85, iceBaseY - iceH * 0.55);
+  // 山の輪郭に沿う上半分 + 垂れ feature
+  const segs = [
+    [-0.85, -0.55],
+    [-0.55, -0.78],
+    [-0.20, -0.90],
+    [-0.20, -0.62], // dip 1
+    [0.10, -0.92],
+    [0.40, -0.70],
+    [0.40, -0.45], // dip 2
+    [0.75, -0.65],
+    [0.85, -0.55],
+  ];
+  for (const [nx, ny] of segs) {
+    ctx.lineTo(iceCX + iceR * nx, iceBaseY + iceH * ny);
+  }
+  // 氷山頂上付近に shrink
+  ctx.lineTo(iceCX + iceR * 0.85, iceBaseY - iceH * 0.95);
+  ctx.lineTo(iceCX - iceR * 0.85, iceBaseY - iceH * 0.95);
+  ctx.closePath();
+  ctx.fill();
+
+  // チェリー (= シロップ上の赤い丸 1 つ、 アクセント)
+  ctx.fillStyle = '#c92e4a';
+  ctx.beginPath();
+  ctx.arc(iceCX + iceR * 0.05, iceBaseY - iceH * 0.95, Math.min(W, H) * 0.045, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = '#7fb069';
+  // 葉っぱ
+  ctx.beginPath();
+  ctx.ellipse(iceCX + iceR * 0.12, iceBaseY - iceH * 1.02, Math.min(W, H) * 0.035, Math.min(W, H) * 0.015, -0.6, 0, TAU);
+  ctx.fill();
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawFavicon(W, H) {
+  drawKakigoriSymbol(W, H, { pad: 0.04, lineScale: 0.6, lanterns: false });
+}
+
+function drawIcon192(W, H) {
+  drawKakigoriSymbol(W, H, { pad: 0.06, lineScale: 1.5 });
+}
+
+function drawIcon512(W, H) {
+  drawKakigoriSymbol(W, H, { pad: 0.06, lineScale: 3 });
+}
+
+function drawOgImage(W, H) {
+  // 1200x630 横長 = 左半分にかき氷、 右半分にタイトル
+  // 背景: 暖色 gradient
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#fff4dc');
+  bg.addColorStop(1, '#ffe1d0');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 紙テクスチャ (= 既存 body::before 風)
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = '#b8dce8';
+  for (let i = -W; i < W * 2; i += 60) {
+    ctx.fillRect(i, -H, 1, H * 3);
+    ctx.fillRect(-H, i, W * 3, 1);
+  }
+  ctx.restore();
+
+  // 提灯フラッグ (= 上部に小さく散らす)
+  const lanternColors = ['#ff5e7a', '#ffce4a', '#6cba87', '#4287d6', '#f08a4b'];
+  for (let i = 0; i < 6; i++) {
+    const lx = W * (0.1 + i * 0.13);
+    const ly = H * 0.10;
+    const ls = 18;
+    ctx.fillStyle = lanternColors[i % lanternColors.length];
+    ctx.strokeStyle = '#2a3a4d';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(lx, ly, ls * 0.7, ls * 0.85, 0, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    // string
+    ctx.beginPath();
+    ctx.moveTo(lx - ls, ly - ls * 0.7);
+    ctx.lineTo(lx + ls, ly - ls * 0.7);
+    ctx.stroke();
+  }
+
+  // 左半分にかき氷シンボル (300x500 程度を 1200x630 の左に配置)
+  ctx.save();
+  ctx.translate(W * 0.05, H * 0.15);
+  // 別の region に drawKakigoriSymbol を流用するのは難しいので、 サイズだけ調整して直接描画
+  const sym_W = W * 0.40;
+  const sym_H = H * 0.80;
+  // 透明背景にして既存関数の bg は使わない
+  // とりあえずシンボルを別関数で
+  drawCenteredKakigori(W * 0.05 + sym_W / 2, H * 0.15 + sym_H * 0.55, sym_W, sym_H);
+  ctx.restore();
+
+  // 右半分: タイトル
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 76px "Yusei Magic", serif';
+  // 影
+  ctx.fillStyle = 'rgba(95, 168, 196, 0.30)';
+  ctx.fillText('夏祭り', W * 0.50 + 6, H * 0.32 + 6);
+  ctx.fillStyle = '#3d7896';
+  ctx.fillText('夏祭り', W * 0.50, H * 0.32);
+
+  ctx.font = 'bold 88px "Yusei Magic", serif';
+  ctx.fillStyle = 'rgba(95, 168, 196, 0.30)';
+  ctx.fillText('かき氷', W * 0.50 + 6, H * 0.50 + 6);
+  ctx.fillStyle = '#e94560';
+  ctx.fillText('かき氷', W * 0.50, H * 0.50);
+
+  ctx.font = 'bold 64px "Yusei Magic", serif';
+  ctx.fillStyle = 'rgba(95, 168, 196, 0.30)';
+  ctx.fillText('フェスティバル', W * 0.50 + 5, H * 0.66 + 5);
+  ctx.fillStyle = '#4287d6';
+  ctx.fillText('フェスティバル', W * 0.50, H * 0.66);
+
+  ctx.font = '700 26px "Zen Maru Gothic", sans-serif';
+  ctx.fillStyle = '#2a3a4d';
+  ctx.fillText('🍧 3〜7 歳むけ Web ゲーム', W * 0.50, H * 0.82);
+}
+
+// 中心が (cx, cy)、 サイズ W x H に収まる かき氷シンボルを描画 (= OG 用ヘルパー)
+function drawCenteredKakigori(cx, cy, W, H) {
+  ctx.save();
+  ctx.translate(cx - W/2, cy - H/2);
+  // 背景 (= 角丸塗りなし、 透明)
+  // 器
+  const bowlCY = H * 0.72;
+  const bowlW = W * 0.78;
+  const bowlH = H * 0.08;
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(W/2 - bowlW/2, bowlCY);
+  ctx.quadraticCurveTo(W/2 - bowlW/2, bowlCY + bowlH * 2.6, W/2 - bowlW * 0.30, bowlCY + bowlH * 2.4);
+  ctx.lineTo(W/2 + bowlW * 0.30, bowlCY + bowlH * 2.4);
+  ctx.quadraticCurveTo(W/2 + bowlW/2, bowlCY + bowlH * 2.6, W/2 + bowlW/2, bowlCY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#dceffa';
+  ctx.beginPath();
+  ctx.ellipse(W/2, bowlCY, bowlW/2, bowlH, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+
+  // 氷山
+  const iceCX = W/2;
+  const iceBaseY = bowlCY - 4;
+  const iceR = bowlW * 0.42;
+  const iceH = H * 0.50;
+  const iceGrad = ctx.createLinearGradient(iceCX, iceBaseY - iceH, iceCX, iceBaseY);
+  iceGrad.addColorStop(0, '#fff');
+  iceGrad.addColorStop(0.6, '#f0faff');
+  iceGrad.addColorStop(1, '#c8e0e8');
+  ctx.fillStyle = iceGrad;
+  ctx.beginPath();
+  ctx.moveTo(iceCX - iceR, iceBaseY);
+  for (let x = -iceR; x <= iceR; x += iceR / 30) {
+    const nx = x / iceR;
+    const y = iceBaseY - iceH * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+    ctx.lineTo(iceCX + x, y);
+  }
+  ctx.lineTo(iceCX + iceR, iceBaseY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#9bc4d4';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // シロップ
+  ctx.fillStyle = '#e94560';
+  const segs = [
+    [-0.85, -0.55], [-0.55, -0.78], [-0.20, -0.90], [-0.20, -0.62],
+    [0.10, -0.92], [0.40, -0.70], [0.40, -0.45], [0.75, -0.65], [0.85, -0.55],
+  ];
+  ctx.beginPath();
+  ctx.moveTo(iceCX + iceR * segs[0][0], iceBaseY + iceH * segs[0][1]);
+  for (const [nx, ny] of segs.slice(1)) {
+    ctx.lineTo(iceCX + iceR * nx, iceBaseY + iceH * ny);
+  }
+  ctx.lineTo(iceCX + iceR * 0.85, iceBaseY - iceH * 0.95);
+  ctx.lineTo(iceCX - iceR * 0.85, iceBaseY - iceH * 0.95);
+  ctx.closePath();
+  ctx.fill();
+
+  // チェリー
+  ctx.fillStyle = '#c92e4a';
+  ctx.beginPath();
+  ctx.arc(iceCX + iceR * 0.05, iceBaseY - iceH * 0.95, Math.min(W, H) * 0.060, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = '#7fb069';
+  ctx.beginPath();
+  ctx.ellipse(iceCX + iceR * 0.15, iceBaseY - iceH * 1.02, Math.min(W, H) * 0.045, Math.min(W, H) * 0.020, -0.6, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}
+
+// ============ sprite 設定 ============
+
+const sprites = [
+  { name: 'favicon-32',  w: 32,   h: 32,   draw: drawFavicon },
+  { name: 'icon-192',    w: 192,  h: 192,  draw: drawIcon192 },
+  { name: 'icon-512',    w: 512,  h: 512,  draw: drawIcon512 },
+  { name: 'og-image',    w: 1200, h: 630,  draw: drawOgImage },
+];
+
+const grid = document.getElementById('grid');
+
+function renderSprite(s) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  const cv = document.createElement('canvas');
+  cv.id = 'cv-' + s.name;
+  cv.width = s.w;
+  cv.height = s.h;
+  // 大きい canvas は表示時に縮小
+  if (s.w > 300) {
+    cv.style.maxWidth = '300px';
+    cv.style.height = 'auto';
+  }
+  cell.appendChild(cv);
+  const name = document.createElement('div');
+  name.className = 'name';
+  name.textContent = s.name + '.png';
+  cell.appendChild(name);
+  const size = document.createElement('div');
+  size.className = 'size';
+  size.textContent = s.w + ' × ' + s.h;
+  cell.appendChild(size);
+  grid.appendChild(cell);
+
+  ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, s.w, s.h);
+  s.draw(s.w, s.h);
+  log('rendered ' + s.name);
+}
+
+document.fonts.ready.then(() => {
+  log('fonts ready, rendering icons...');
+  for (const s of sprites) renderSprite(s);
+  log('all icons rendered (' + sprites.length + ')');
+});
+
+document.getElementById('download-all').onclick = () => {
+  for (const s of sprites) {
+    const cv = document.getElementById('cv-' + s.name);
+    cv.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = s.name + '.png';
+      a.click();
+    }, 'image/png');
+  }
+};
+
+window.exportIcons = async () => {
+  await document.fonts.ready;
+  await new Promise(r => setTimeout(r, 200));
+  const results = {};
+  for (const s of sprites) {
+    const cv = document.getElementById('cv-' + s.name);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const buf = await blob.arrayBuffer();
+    results[s.name] = Array.from(new Uint8Array(buf));
+  }
+  return results;
+};
+</script>
+</body>
+</html>

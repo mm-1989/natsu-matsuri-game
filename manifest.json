@@ -1,0 +1,26 @@
+{
+  "name": "夏祭り かき氷フェスティバル",
+  "short_name": "かき氷フェス",
+  "description": "幼児〜小学校低学年向け、 ハンドル回してタップで遊ぶ夏祭りかき氷ゲーム",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#e94560",
+  "background_color": "#fff4dc",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "assets/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
