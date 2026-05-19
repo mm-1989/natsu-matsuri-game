@@ -396,6 +396,33 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   min-height: 44px;
 }
 .home-btn:hover { background: #fff; transform: translate(-1px, -1px); }
+
+/* Share ゾーン — reveal phase 限定、 右下固定 (= ホームと対称) */
+.share-controls {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 7;
+}
+.share-controls.hidden { display: none; }
+
+.share-btn {
+  background: #fff5e0;
+  color: var(--ink);
+  font-weight: 900;
+  font-size: 13px;
+  padding: 10px 16px;
+  letter-spacing: 0.04em;
+  border-radius: 22px;
+  border: 2.5px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  min-width: 88px;
+  min-height: 44px;
+  cursor: pointer;
+  font-family: 'Zen Maru Gothic', sans-serif;
+}
+.share-btn:hover { background: #ffeebd; transform: translate(-1px, -1px); }
+.share-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 /* During the brief lockout after eating, the button is greyed and doesn't
    pulse — so an in-flight click can't accidentally trigger a retry. */
 .reset-btn.big.locked {
@@ -702,6 +729,10 @@ button.syrup.selected:hover { transform: translate(0, 0); }
     <!-- Safety-net 専用 ゾーン (= 左下固定、 主役と物理的に離す) -->
     <div class="safety-controls" id="safety-controls">
       <button class="home-btn" id="btn-home" type="button">🏠 ホーム</button>
+    </div>
+    <!-- Share ゾーン (= 右下固定、 reveal phase 中だけ表示) -->
+    <div class="share-controls hidden" id="share-controls">
+      <button class="share-btn" id="btn-share" type="button">📷 ほぞん</button>
     </div>
   </div>
 
@@ -3307,6 +3338,9 @@ function updatePhaseUI() {
   // Safety-net 階層: ホーム専用ゾーン (= 左下固定、 Primary と別 DOM)
   document.getElementById('safety-controls').classList.toggle('hidden', !showHome);
 
+  // Share ゾーン: reveal phase だけ表示 (= 完成かき氷の「保存・シェア」 を促す)
+  document.getElementById('share-controls').classList.toggle('hidden', phase !== 'reveal');
+
   // Primary 階層: action pill 内のボタンを phase で出し分け
   ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
     document.getElementById(id).style.display = showSyrup ? '' : 'none';
@@ -3774,6 +3808,43 @@ function goHome() {
   updatePhaseUI();
 }
 document.getElementById('btn-home').addEventListener('click', goHome);
+
+// 📷 完成かき氷を画像保存 / シェア (= M8.0)
+// Web Share API 対応端末 (iOS/Android 大半 + 一部 desktop) では navigator.share、
+// 非対応 (= 旧 PC ブラウザ等) では PNG download にフォールバック。
+async function shareKakigori(ev) {
+  if (ev) ev.stopPropagation();
+  sndButton();
+  const canvas = document.getElementById('game');
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+  if (!blob) return;
+  const fname = `kakigori-${Date.now()}.png`;
+  const file = new File([blob], fname, { type: 'image/png' });
+  // Web Share API: file 添付シェアが使えるか試す
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'できたよ！ 🍧',
+        text: '夏祭り かき氷フェスティバル でできたよ',
+        url: 'https://mm-1989.github.io/natsu-matsuri-game/',
+      });
+      return;
+    } catch (_) {
+      // user キャンセル等は無視して download fallback
+    }
+  }
+  // Fallback: ローカル download
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+document.getElementById('btn-share').addEventListener('click', shareKakigori);
 
 // ---------- syrup ----------
 
