@@ -397,6 +397,14 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   top: 50%;
   transform: translate(-50%, -50%);
 }
+/* ホーム単独表示時 (= challenge playing 中など) は pill 自体を画面左下に固定。
+   「戻る場所が身体で覚えやすい」 という Codex 指摘への対応。 */
+.controls.lone-home {
+  left: 14px;
+  transform: none;
+  bottom: 14px;
+  padding: 6px 12px;
+}
 
 /* Hide temporarily so the next-step UI feels like a fresh appearance */
 .controls.hide-temp {
@@ -442,6 +450,9 @@ button.syrup.selected:hover { transform: translate(0, 0); }
     0 0 20px rgba(255,206,74,0.8);
 }
 .celebrate.show { animation: pop 1.8s cubic-bezier(.34,1.56,.64,1); }
+/* small バリアント: reward モードの「シロップを えらんでね」 のように
+   pill と重なる場面で大きすぎないように縮小 + 上寄せ */
+.celebrate.small { font-size: 28px; top: 24%; }
 @keyframes pop {
   0%   { opacity: 0; transform: scale(0.3) translateY(-30px) rotate(-8deg); }
   15%  { opacity: 1; transform: scale(1.25) translateY(0) rotate(2deg); }
@@ -2839,7 +2850,8 @@ function finishGame() {
   document.getElementById('hint').textContent = isReward
     ? '🎨 シロップを えらんでね ♪'
     : '⏰ TIME UP! お好みのシロップを選ぼう ♪';
-  celebrate(isReward ? '🎨 シロップを えらんでね' : '⏰ TIME UP!');
+  // reward モードはシロップ選択 banner と pill が同時に出るため small で重なり回避
+  celebrate(isReward ? '🎨 シロップを えらんでね' : '⏰ TIME UP!', { small: isReward });
 
   // ⏰ Big white flash + shockwave + slight slow-mo — reward モードでは控えめに
   if (!isReward) state.timeUpFlashT = 1.0;
@@ -2982,10 +2994,11 @@ function updateScoreUI() {
   }
 }
 
-function celebrate(msg) {
+function celebrate(msg, opts = {}) {
   const el = document.getElementById('celebrate');
   el.textContent = msg;
-  el.classList.remove('show');
+  el.classList.remove('show', 'small');
+  if (opts.small) el.classList.add('small');
   void el.offsetWidth;
   el.classList.add('show');
 }
@@ -3008,8 +3021,10 @@ function updatePhaseUI() {
   // mode-select overlay only visible during 'mode-select' phase
   document.getElementById('mode-select').classList.toggle('hidden', phase !== 'mode-select');
 
-  // reward モードでは scoreboard を完全非表示 (3-5 歳向け = 数字なし)
-  document.querySelector('.scoreboard').style.display = isReward ? 'none' : '';
+  // scoreboard は challenge モードの play / 結果フェーズだけ表示。
+  // title / mode-select / reward モードでは隠して「ホーム感」 と 認知負荷を低減。
+  const hideScoreboard = isReward || phase === 'title' || phase === 'mode-select';
+  document.querySelector('.scoreboard').style.display = hideScoreboard ? 'none' : '';
 
   // 🏠 ホームボタンは title / mode-select 以外で常時表示 (= 全 phase から戻れる)
   const showHome = phase !== 'title' && phase !== 'mode-select';
@@ -3033,6 +3048,9 @@ function updatePhaseUI() {
   const ctrls = document.getElementById('controls');
   ctrls.classList.toggle('hidden', !anyVisible);
   ctrls.classList.toggle('center', phase === 'done');
+  // ホーム単独表示 (= 他の主役ボタンがない) のときは pill を左下固定 → 一貫した戻る場所
+  const loneHome = showHome && !showSyrup && !showReset && !showDoneBtn;
+  ctrls.classList.toggle('lone-home', loneHome);
   // Canvas cursor: pointer during eating + title to invite clicks
   canvas.classList.toggle('eating', phase === 'eating' || phase === 'title');
 }
