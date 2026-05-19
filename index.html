@@ -1827,50 +1827,17 @@ function spawnCottonParticle() {
 function updateCottonParticles(dt) {
   if (state.activity !== 'cottoncandy') return;
   if (state.phase !== 'playing' && state.phase !== 'ready') return;
-  const g = geometry();
-  const stickCX = g.bowlCenterX;
-  const cloudH = state.pileH * 1.32 * g.scale;
-  const stickCY = g.bowlRimY - Math.max(40, cloudH * 0.5);
-
+  // M12.7: 粒は装飾のみ (= 「砂糖が漂う」 感だけ)、 吸収判定なし
   for (const p of state.cottonParticles) {
-    // 棒方向への軽い引力 (= 指で触れなくても自然に中央へ向かう、 浮上時の補助)
-    const adx = stickCX - p.x;
-    const ady = stickCY - p.y;
-    const adist = Math.max(1, Math.hypot(adx, ady));
-    p.vx += (adx / adist) * 0.012 * dt;
-    p.vy += (ady / adist) * 0.012 * dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.age += dt;
-    // 棒中心に近づいたら吸収 → 雲が育つ (= 判定広め)
-    const dx = stickCX - p.x;
-    const dy = stickCY - p.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 45) {
-      state.shavings += 3;
-      updatePile();
-      // 寄せた方向で偏り (= side -1 = 左から寄せ → 左 bump、 +1 = 右から寄せ → 右 bump)
-      state.cottonBalance += -p.side * 0.08;
-      // 「自分の雲」 用に pileProfile を加算 (= 寄せた位置に小ふくらみ)
-      if (!state.pileProfile) state.pileProfile = [];
-      if (state.pileProfile.length < 12) {
-        state.pileProfile.push({
-          nx: clamp(-p.side * 0.5 + rand(-0.3, 0.3), -0.85, 0.85),
-          depth: rand(0.03, 0.07),
-          width: rand(0.10, 0.18),
-        });
-      }
-      sndRotationBonus();  // 「キラン」 = 吸収 SE 流用
-      p.captured = true;
-    }
   }
   state.cottonParticles = state.cottonParticles.filter(p =>
-    !p.captured && p.y > -50 && p.y < H + 100 && p.age < 600
+    p.y > -50 && p.y < H + 100 && p.age < 600
   );
-
-  // 定期生成 (= playing 中はずっと粒が浮上)
   state.cottonSpawnT += dt;
-  if (state.cottonSpawnT > 14) {  // ≈ 0.23s 間隔 (= 多めに浮上で 3-5 歳が触りやすい)
+  if (state.cottonSpawnT > 18) {
     spawnCottonParticle();
     state.cottonSpawnT = 0;
   }
@@ -1994,15 +1961,10 @@ function drawCloud(g) {
   const cx = g.bowlCenterX;
   const baseY = g.bowlRimY;
 
-  // 雲の色: syrup 未選択は白〜淡橙、 選択後は その色 (= 雲全体に染み込む演出)
-  let topCol = '#ffffff', midCol = '#fff7f3', botCol = '#ffdbc8';
-  if (state.syrupCoating) {
-    const c = state.syrupCoating;
-    const t = c.progress;
-    topCol = mixColorHex('#ffffff', c.lightColor, t);
-    midCol = mixColorHex('#fff7f3', c.color,      t);
-    botCol = mixColorHex('#ffdbc8', c.darkColor,  t);
-  }
+  // M12.7: わたあめは色固定 (= 桃色、 シロップ選択は廃止)
+  const topCol = '#ffffff';
+  const midCol = '#fff0f5';
+  const botCol = '#ffd0e0';
   const grad = ctx.createLinearGradient(cx, baseY - h, cx, baseY);
   grad.addColorStop(0,    topCol);
   grad.addColorStop(0.55, midCol);
@@ -3099,6 +3061,7 @@ function drawSpeedLines(g) {
 // ---------- 🎓 first-time handle hint ----------
 function drawHandleHint(g) {
   if (state.phase !== 'ready') return;
+  if (state.activity === 'cottoncandy') return;  // わたあめではハンドルを使わない
   // Fade out after ~6s or once the player has nudged the handle
   if (state.readyHintT > 6) return;
   const t = performance.now() / 1000;
@@ -3546,6 +3509,11 @@ function finishGame() {
   state.frozenHeightCm = Math.round(state.pileH / 4);
   state.frozenPileH = state.pileH;
   state.frozenPileR = state.pileR;
+  // M12.7: わたあめは シロップ選択 phase を経由せず finishReward へ直行 (= 即 reveal)
+  if (state.activity === 'cottoncandy') {
+    finishReward();
+    return;
+  }
   // 🏔️ Save the best HEIGHT — reward モードでは記録しない (3-5 歳向け = 競争なし)
   if (!isReward && state.frozenHeightCm > state.bestHeight) {
     state.bestHeight = state.frozenHeightCm;
@@ -3627,7 +3595,7 @@ function startGame() {
   state.timeLeft = GAME_DURATION;
   state.playingStartT = performance.now();  // M9.1: cps 計算用
   let hint;
-  if (state.activity === 'cottoncandy')   hint = 'ゆびで わたを あつめてね ♪「できた！」 で かんせい';
+  if (state.activity === 'cottoncandy')   hint = 'ぼうの まわりを ぐるぐる！ おおきく なったら 「できた！」';
   else if (state.mode === 'reward')        hint = 'すきなだけ まわしてね ♪「できた！」 ボタンで かんせい';
   else                                     hint = 'ぐるぐる回そう！！ ⟳';
   document.getElementById('hint').textContent = hint;
@@ -3806,10 +3774,10 @@ function pointerDown(e) {
   e.preventDefault();
   const pt = getPointer(e);
 
-  // わたあめ: 画面どこ touch でも isDragging、 ハンドル grab 不要
+  // わたあめ: 画面どこ touch でも isDragging、 角度ベース回転検出のため lastPointerAngle reset
   if (state.activity === 'cottoncandy') {
     state.isDragging = true;
-    state.cottonLastPointer = pt;
+    state.lastPointerAngle = null;
     canvas.classList.add('dragging');
     return;
   }
@@ -4145,28 +4113,44 @@ function pointerMove(e) {
   e.preventDefault();
   const pt = getPointer(e);
 
-  // わたあめ: 粒を指方向に引く + stroke 集計
+  // わたあめ: 「棒振り回し」 = 指の角度変化 (= 棒中心軌跡) で雲が育つ
   if (state.activity === 'cottoncandy') {
-    for (const p of state.cottonParticles) {
-      const dx = pt.x - p.x;
-      const dy = pt.y - p.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist < 60) {
-        const force = 0.20 * (1 - dist / 60);
-        p.vx += (dx / Math.max(1, dist)) * force;
-        p.vy += (dy / Math.max(1, dist)) * force;
-        const sp = Math.hypot(p.vx, p.vy);
-        if (sp > 3.5) { p.vx = p.vx / sp * 3.5; p.vy = p.vy / sp * 3.5; }
+    const g = geometry();
+    // 雲/棒の中心 (= 機械上、 雲が育つにつれ少し上)
+    const cloudH = state.pileH * 1.32 * g.scale;
+    const cx = g.bowlCenterX;
+    const cy = g.bowlRimY - Math.max(40, cloudH * 0.5);
+    // 指の角度
+    const ang = Math.atan2(pt.y - cy, pt.x - cx);
+    if (state.lastPointerAngle != null) {
+      let delta = ang - state.lastPointerAngle;
+      if (delta > Math.PI)  delta -= TAU;
+      if (delta < -Math.PI) delta += TAU;
+      if (Math.abs(delta) < Math.PI * 0.8) {
+        state.totalRad += Math.abs(delta);
+        // 角度変化に比例して綿が育つ。 強めの係数 (= 振り回し量がそのまま雲に)
+        const grow = Math.min(6, Math.abs(delta) * 9);
+        state.shavings += grow;
+        state.cottonStrokeTotal += Math.abs(delta) * 100;
+        updatePile();
+        // 寄せた方向 (= 指の x 位置) で偏り
+        state.cottonBalance += ((pt.x - cx) / Math.max(1, W * 0.4)) * 0.01;
+        // 「自分の雲」 用に bump 追加 (= 上限 12 個)
+        if (Math.abs(delta) > 0.15) {
+          if (!state.pileProfile) state.pileProfile = [];
+          if (state.pileProfile.length < 12 && Math.random() < 0.5) {
+            state.pileProfile.push({
+              nx: clamp((pt.x - cx) / (W * 0.4), -0.85, 0.85),
+              depth: rand(0.03, 0.07),
+              width: rand(0.10, 0.18),
+            });
+          }
+        }
       }
     }
-    if (state.cottonLastPointer) {
-      const sdx = pt.x - state.cottonLastPointer.x;
-      const sdy = pt.y - state.cottonLastPointer.y;
-      state.cottonStrokeTotal += Math.hypot(sdx, sdy);
-    }
-    state.cottonLastPointer = pt;
+    state.lastPointerAngle = ang;
     if (state.phase === 'ready') startGame();
-    sndSlice();  // なでる感の SE (= 既存 80ms throttle)
+    sndSlice();
     return;
   }
 
@@ -4261,7 +4245,7 @@ function selectMode(mode) {
   state.mode = mode;
   state.phase = 'ready';
   document.getElementById('hint').textContent = state.activity === 'cottoncandy'
-    ? 'ゆびで わたを あつめよう ☁️'
+    ? 'ぼうの まわりを ゆびで ぐるぐる ☁️'
     : 'ハンドルを グルグル まわそう！⟳';
   updatePhaseUI();
 }
@@ -4506,7 +4490,7 @@ function resetGame() {
   resetBtn.style.pointerEvents = '';
   resetBtn.style.transition = '';
   let resetHint;
-  if (state.activity === 'cottoncandy')   resetHint = 'ゆびで わたを あつめてね ♪';
+  if (state.activity === 'cottoncandy')   resetHint = 'ぼうの まわりを ぐるぐる ♪';
   else if (state.mode === 'reward')        resetHint = 'すきなだけ まわしてね ♪';
   else                                     resetHint = 'ハンドルを回すと 30 秒のタイマー開始！';
   document.getElementById('hint').textContent = resetHint;
