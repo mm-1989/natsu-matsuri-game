@@ -3070,10 +3070,16 @@ function loop() {
   if (state.phase === 'finished' && state.syrupCoating && state.syrupCoating.progress >= 1) {
     startEating();
   }
-  // M7.2: reward モード reveal phase の自動進行 (= 2.5 秒で done へ)
+  // M7.3: reward モード reveal phase は タップ までずっと滞在。
+  // 自動遷移は無し。 1.5 秒後 hint をタップ誘導に切替えて子供にも分かるように。
   if (state.phase === 'reveal') {
     state.revealT += ms / 1000;
-    if (state.revealT >= 2.5) finishReveal();
+    if (state.revealT > 1.5) {
+      const hintEl = document.getElementById('hint');
+      if (hintEl.textContent !== '👆 タップで すすむ ♪') {
+        hintEl.textContent = '👆 タップで すすむ ♪';
+      }
+    }
   }
 
   // celebration timing — the big celebration only fires at the very end (done).
