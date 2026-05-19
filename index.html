@@ -1515,6 +1515,9 @@ function drawMachineBody(g) {
   // sprite was exported with scale=1, sprite size 240×440, machine 足元 at sprite_h - 10 = 430.
   const drawW = 240 * g.scale;
   const drawH = 440 * g.scale;
+  ctx.save();
+  // reward done では機械を fade out して「完成かき氷 = 主役」 に視線を譲る (= Codex 案 B)
+  if (state.mode === 'reward' && state.phase === 'done') ctx.globalAlpha = 0.30;
   ctx.drawImage(
     sprites.machine,
     g.machineCenterX - drawW / 2,
@@ -1522,6 +1525,7 @@ function drawMachineBody(g) {
     drawW,
     drawH
   );
+  ctx.restore();
 }
 
 // ハンドルは state.handleAngle で常時動くので procedural のまま。
@@ -1532,6 +1536,8 @@ function drawHandle(g) {
   const s = g.scale;
 
   ctx.save();
+  // reward done では機械と一緒にハンドルも薄くする (= Codex 案 B)
+  if (state.mode === 'reward' && state.phase === 'done') ctx.globalAlpha = 0.30;
   ctx.lineWidth = 3;
   ctx.strokeStyle = '#2a3a4d';
 
@@ -1837,9 +1843,13 @@ function drawCelebration(g) {
   const bannerIn = clamp((ct - 0.35) / 0.5, 0, 1);
   if (bannerIn > 0 && state.praiseLabel) {
     const isFinal = state.phase === 'done';
+    const isReward = state.mode === 'reward';
     const isNewRecord = state.heightNewRecord || state.scoreNewRecord;
-    const fontSize = isFinal ? (isNewRecord ? 22 : 19) : 18;
-    const yPos = 28 - (1 - bannerIn) * 18;
+    // reward done では banner を「見出し」 サイズに縮小 + 上端寄り (= 完成かき氷を主役にする / Codex 案 C)
+    const fontSize = (isReward && isFinal) ? 14
+                    : isFinal ? (isNewRecord ? 22 : 19) : 18;
+    const yPos = (isReward && isFinal) ? 10
+                : 28 - (1 - bannerIn) * 18;
     const lines = state.praiseLabel.split('\n');
     ctx.save();
     ctx.globalAlpha = bannerIn;
@@ -3278,7 +3288,8 @@ function updatePhaseUI() {
   const actionVisible = showSyrup || showReset || showDoneBtn;
   const ctrls = document.getElementById('action-controls');
   ctrls.classList.toggle('hidden', !actionVisible);
-  ctrls.classList.toggle('center', phase === 'done');
+  // challenge done のみ中央寄せ (= スコア結果が主役)。 reward done は下部固定で完成かき氷を邪魔しない (Codex 案 C)
+  ctrls.classList.toggle('center', phase === 'done' && state.mode !== 'reward');
   // Canvas cursor: pointer during eating + title to invite clicks
   canvas.classList.toggle('eating', phase === 'eating' || phase === 'title');
 }
@@ -3370,14 +3381,20 @@ function finishReward() {
   setTimeout(() => spawnFirework(), 350);
   updatePhaseUI();
   bounceControls();
-  // 「もう1回」 押下の誤射防止 lockout (challenge モード finishEating と同じ仕掛け)
+  // reward done では「もう1回」 ボタンを 1.5 秒間 透明にして
+  // 完成かき氷をじっくり見せる時間を確保 (= Codex 案 C / 完成体験の主役化)
   const resetBtn = document.getElementById('btn-reset');
   resetBtn.disabled = true;
   resetBtn.classList.add('locked');
+  resetBtn.style.opacity = '0';
+  resetBtn.style.pointerEvents = 'none';
+  resetBtn.style.transition = 'opacity 0.5s ease-out';
   setTimeout(() => {
     resetBtn.disabled = false;
     resetBtn.classList.remove('locked');
-  }, 1200);
+    resetBtn.style.opacity = '1';
+    resetBtn.style.pointerEvents = '';
+  }, 1500);
 }
 
 function eatBite(pt) {
@@ -3843,6 +3860,11 @@ function resetGame() {
     el.disabled = true;
     el.classList.remove('selected');
   });
+  // finishReward が触った resetBtn の inline style を清掃 (= 次プレイへ持ち越さない)
+  const resetBtn = document.getElementById('btn-reset');
+  resetBtn.style.opacity = '';
+  resetBtn.style.pointerEvents = '';
+  resetBtn.style.transition = '';
   document.getElementById('hint').textContent = state.mode === 'reward'
     ? 'すきなだけ まわしてね ♪'
     : 'ハンドルを回すと 30 秒のタイマー開始！';
