@@ -776,6 +776,10 @@ const state = {
   syrupCoating: null,     // { color, drips:[], progress, durationFrames }
   pileH: 0,               // current pile height in pixels (world units)
   pileR: 0,               // current pile radius
+  // M9.1: 「自分のかき氷」 演出 — 形タイプ + 手作りでこぼこ
+  pileShape: 'mokomoko',  // 'fluffy' (ゆっくり回し) | 'mokomoko' (普通) | 'tsuntsun' (速回)
+  pileProfile: null,      // finishGame で固定する [{nx, bump}] (= 左右非対称な小ふくらみ)
+  playingStartT: 0,       // playing 開始時刻 (= cps 計算用)
   best: 0,
   newRecord: false,
   heightNewRecord: false,
@@ -1146,6 +1150,30 @@ function geometry() {
   };
 }
 
+// ---------- pile shape (= 自分のかき氷 / M9.1) ----------
+// 形タイプ別の dome パラメータ。 「失敗形なし」: どれも肯定的な個性として描く。
+const PILE_SHAPES = {
+  fluffy:   { power: 0.85, rMul: 1.12, hMul: 0.88, name: 'ふわふわ' },  // 広く低く
+  mokomoko: { power: 1.30, rMul: 1.00, hMul: 1.00, name: 'もこもこ' },  // 既存
+  tsuntsun: { power: 2.20, rMul: 0.85, hMul: 1.10, name: 'つんつん' },  // 細く高く
+};
+function getPileShape() {
+  return PILE_SHAPES[state.pileShape] || PILE_SHAPES.mokomoko;
+}
+// nx ∈ [-1, 1] における山表面の高さ。 h は基準スケール後の値を渡す。
+function pileSurfaceHeight(nx, h) {
+  const sh = getPileShape();
+  let dome = h * Math.pow(Math.cos(nx * Math.PI / 2), sh.power);
+  if (state.pileProfile) {
+    for (const f of state.pileProfile) {
+      const t = (nx - f.nx) / f.width;
+      if (Math.abs(t) >= 1) continue;
+      dome += h * f.depth * Math.pow(Math.cos(t * Math.PI / 2), 2);
+    }
+  }
+  return dome;
+}
+
 // ---------- spawn ice ----------
 function spawnShavings(amount, fromAngle) {
   const g = geometry();
@@ -1197,13 +1225,14 @@ function updateParticles(dt) {
     }
 
     // landing test: if reaches the pile profile, settle (cranking phase)
+    const shLanding = getPileShape();
     const dx = (p.x - g.bowlCenterX);
-    const r = state.pileR * g.scale;
+    const r = state.pileR * shLanding.rMul * g.scale;
     let surfaceY = g.bowlRimY;
     if (r > 1 && Math.abs(dx) < r) {
       const nx = dx / r;
-      const domeH = state.pileH * g.scale;
-      surfaceY = g.bowlRimY - domeH * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+      const domeH = state.pileH * shLanding.hMul * g.scale;
+      surfaceY = g.bowlRimY - pileSurfaceHeight(nx, domeH);
     }
 
     if (p.y >= surfaceY - 1) {
@@ -1304,8 +1333,9 @@ function drawBowl(g) {
 
 function drawPile(g) {
   if (state.pileH < 1) return;
-  const r = state.pileR * g.scale;
-  const h = state.pileH * g.scale;
+  const sh = getPileShape();
+  const r = state.pileR * sh.rMul * g.scale;
+  const h = state.pileH * sh.hMul * g.scale;
   const cx = g.bowlCenterX;
   const baseY = g.bowlRimY;
 
@@ -1333,7 +1363,7 @@ function drawPile(g) {
   ctx.moveTo(cx - r, baseY);
   for (let x = -r; x <= r; x += 2) {
     const nx = x / r;
-    const y = baseY - h * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+    const y = baseY - pileSurfaceHeight(nx, h);
     ctx.lineTo(cx + x, y);
   }
   ctx.lineTo(cx + r, baseY);
@@ -1355,7 +1385,7 @@ function drawPile(g) {
       const dx = f.x - cx;
       if (Math.abs(dx) < r) {
         const nx = dx / r;
-        const surfY = baseY - h * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+        const surfY = baseY - pileSurfaceHeight(nx, h);
         f.targetY = surfY - 1;
       } else {
         f.targetY = baseY - 2;
@@ -1387,8 +1417,9 @@ function drawSyrupCoating(g) {
 }
 
 function drawCoatingLayer(g, c) {
-  const r = state.pileR * g.scale;
-  const h = state.pileH * g.scale;
+  const sh = getPileShape();
+  const r = state.pileR * sh.rMul * g.scale;
+  const h = state.pileH * sh.hMul * g.scale;
   const cx = g.bowlCenterX;
   const baseY = g.bowlRimY;
   const p = c.progress;
@@ -1398,7 +1429,7 @@ function drawCoatingLayer(g, c) {
   const pileY = (x) => {
     const nx = x / r;
     if (Math.abs(nx) >= 1) return baseY;
-    return baseY - h * Math.pow(Math.cos(nx * Math.PI / 2), 1.3);
+    return baseY - pileSurfaceHeight(nx, h);
   };
 
   // organic descent profile
@@ -3134,6 +3165,24 @@ function finishGame() {
   state.lastPointerAngle = null;
   canvas.classList.remove('dragging');
   const isReward = state.mode === 'reward';
+  // M9.1: ハンドル回し方 (= cps) から「形タイプ」 を確定
+  // 落とし穴回避: どの形も「個性ある肯定的形」 として描く (= 失敗形なし)
+  const elapsed = Math.max(0.5, (performance.now() - state.playingStartT) / 1000);
+  const cps = state.rotations / elapsed;
+  // 閾値は実 user 速度を想定: 人間が手で「速く回す」 で 1.0-2.0 cps、 普通 0.5-0.9、 ゆっくり < 0.5
+  if      (cps < 0.55) state.pileShape = 'fluffy';    // ゆっくり = ふわふわ
+  else if (cps < 1.05) state.pileShape = 'mokomoko';  // 普通 = もこもこ
+  else                 state.pileShape = 'tsuntsun';  // 速回 = つんつん
+  // 手作りでこぼこ (= 左右非対称な小ふくらみを 8 個ランダム配置で固定)
+  const profile = [];
+  for (let i = 0; i < 8; i++) {
+    profile.push({
+      nx:    rand(-0.85, 0.85),
+      depth: rand(0.02, 0.07),
+      width: rand(0.10, 0.20),
+    });
+  }
+  state.pileProfile = profile;
   // Freeze the achieved height for scoring purposes
   state.frozenHeightCm = Math.round(state.pileH / 4);
   state.frozenPileH = state.pileH;
@@ -3217,6 +3266,7 @@ function startCelebration() {
 function startGame() {
   state.phase = 'playing';
   state.timeLeft = GAME_DURATION;
+  state.playingStartT = performance.now();  // M9.1: cps 計算用
   document.getElementById('hint').textContent = state.mode === 'reward'
     ? 'すきなだけ まわしてね ♪「できた！」 ボタンで かんせい'
     : 'ぐるぐる回そう！！ ⟳';
@@ -3446,7 +3496,9 @@ function startEating() {
 function finishReward() {
   state.phase = 'reveal';
   state.revealT = 0;
-  state.praiseLabel = 'できたね！';
+  // M9.1: 形タイプを使った命名 (= 「ふわふわ かき氷 / できたね！」 のように 自分の作品感を強化)
+  const shapeName = getPileShape().name;
+  state.praiseLabel = `${shapeName} かき氷\nできたね！`;
   sndFinish();
   document.getElementById('hint').textContent = '✨ できあがり〜！';
   celebrate('🎉 できたね！');
@@ -3476,7 +3528,9 @@ function finishReward() {
 // reveal → done: 完成展示を抜けて 「もう1回」 ボタンを出す
 function finishReveal() {
   state.phase = 'done';
-  state.praiseLabel = 'できたね！\nおいしそう ✨';
+  // M9.1: done でも形タイプ名を維持 (= 自分の作品感の継続)
+  const shapeName = getPileShape().name;
+  state.praiseLabel = `${shapeName} かき氷\nおいしそう ✨`;
   document.getElementById('hint').textContent = '🎉 できた！ もう1回やる？';
   updatePhaseUI();
   bounceControls();
@@ -3973,6 +4027,10 @@ function resetGame() {
   state.sparkles = [];
   state.praiseLabel = '';
   state.revealT = 0;
+  // M9.1: 形タイプ + でこぼこ + cps timer をリセット
+  state.pileShape = 'mokomoko';
+  state.pileProfile = null;
+  state.playingStartT = 0;
   // 🆕 reset all brushup state
   state.pileSparkles = [];
   state.timeUpFlashT = 0;
