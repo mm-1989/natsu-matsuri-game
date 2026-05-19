@@ -352,6 +352,28 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   animation: confirm-pulse 1.4s ease-in-out infinite;
 }
 
+/* 音声 ON/OFF トグル — 右上に固定、 設定階層 (= Primary でも Safety-net でもない) */
+.mute-btn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--ink);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mute-btn:hover { background: #fff; }
+.mute-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
+
 /* Safety-net ゾーン — ホーム専用、 画面左下に常時固定。 主役 pill と物理的に離す。
    Codex 案: 「Primary と Safety-net を同一 pill に混ぜない」 隣接禁止ルール。 */
 .safety-controls {
@@ -686,6 +708,9 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   <p class="hint" id="hint">画面をクリックしてゲームスタート！</p>
 </div>
 
+<!-- 音声 ON/OFF トグル (= 全 phase で右上に常駐、 設定階層) -->
+<button class="mute-btn" id="btn-mute" type="button" aria-label="音 ON/OFF">🔊</button>
+
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -840,6 +865,177 @@ const sprites = {
   bowl:      Object.assign(new Image(), { src: 'assets/images/sprites/bowl.png' }),
 };
 const spriteReady = (sp) => sp && sp.complete && sp.naturalWidth > 0;
+
+// ---------- audio (= Web Audio API procedural SE) ----------
+// 外部 wav を持たず、 AudioContext で都度 oscillator/buffer を生成する方針。
+// iOS Safari 対策: 最初の user gesture で resume() する。
+// localStorage 'natsu-mute' で ON/OFF を永続化。
+let audioCtx = null;
+let muted = (() => { try { return localStorage.getItem('natsu-mute') === '1'; } catch (_) { return false; } })();
+let lastSliceT = 0;
+
+function getAudio() {
+  if (!audioCtx) {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    audioCtx = new Ctor();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function envBeep(ctx, freq, dur, peak, type, freqEnd) {
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = type || 'triangle';
+  osc.frequency.setValueAtTime(freq, now);
+  if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, now + dur);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(peak, now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + dur + 0.02);
+}
+// ハンドル回転中の「シャリシャリ」 (= 短い高音ノイズ burst、 throttle 必須)
+function sndSlice() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  const t = performance.now();
+  if (t - lastSliceT < 80) return;
+  lastSliceT = t;
+  const now = ctx.currentTime;
+  const dur = 0.07;
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const filt = ctx.createBiquadFilter(); filt.type = 'highpass'; filt.frequency.value = 3500;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.18, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  src.connect(filt).connect(gain).connect(ctx.destination);
+  src.start(now); src.stop(now + dur);
+}
+// 1 回転ボーナスの「キラン」
+function sndRotationBonus() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  envBeep(ctx, 1320, 0.16, 0.12, 'triangle', 2640);
+}
+// シロップ pour 「とろっと」
+function sndSyrup() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(180, now);
+  osc.frequency.linearRampToValueAtTime(420, now + 0.4);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.18, now + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.44);
+}
+// 連打「ガブッ」
+function sndChomp() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(160, now);
+  osc.frequency.exponentialRampToValueAtTime(50, now + 0.08);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.20, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.12);
+}
+// 完成 (= reward モード「できたね！」) C E G C メロディ
+function sndFinish() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+  const now = ctx.currentTime;
+  notes.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    const gain = ctx.createGain();
+    const t = now + i * 0.10;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.18, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.28);
+  });
+}
+// TIME UP (= challenge モードのタイマー切れ) 下降 E C G
+function sndTimeUp() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  const notes = [659.25, 523.25, 392.00];
+  const now = ctx.currentTime;
+  notes.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = f;
+    const gain = ctx.createGain();
+    const t = now + i * 0.13;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.15, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.30);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.32);
+  });
+}
+// 新記録 C E G C E G (= 上昇 ファンファーレ)
+function sndNewRecord() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
+  const now = ctx.currentTime;
+  notes.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    const gain = ctx.createGain();
+    const t = now + i * 0.08;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.22, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.36);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.38);
+  });
+}
+// モード選択ボタン「ぷり」
+function sndButton() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  envBeep(ctx, 880, 0.10, 0.18, 'sine', 1320);
+}
+// ホームボタン (= 控えめ)
+function sndHome() {
+  if (muted) return;
+  const ctx = getAudio(); if (!ctx) return;
+  envBeep(ctx, 660, 0.10, 0.12, 'sine', 440);
+}
+
+// ミュートトグル
+const btnMute = document.getElementById('btn-mute');
+function refreshMuteUI() { btnMute.textContent = muted ? '🔇' : '🔊'; }
+btnMute.addEventListener('click', () => {
+  muted = !muted;
+  try { localStorage.setItem('natsu-mute', muted ? '1' : '0'); } catch (_) {}
+  refreshMuteUI();
+  if (!muted) sndButton();  // 解除時に音テスト
+});
+refreshMuteUI();
 
 function getPointer(e) {
   const rect = canvas.getBoundingClientRect();
@@ -2881,6 +3077,8 @@ function finishGame() {
     ? '🎨 シロップを えらんでね ♪'
     : '⏰ TIME UP! お好みのシロップを選ぼう ♪';
   // reward モードはシロップ選択 banner と pill が同時に出るため small で重なり回避
+  // 削り終了 SE: reward = 達成感メロディ、 challenge = タイマー切れの下降系
+  if (isReward) sndFinish(); else sndTimeUp();
   celebrate(isReward ? '🎨 シロップを えらんでね' : '⏰ TIME UP!', { small: isReward });
 
   // ⏰ Big white flash + shockwave + slight slow-mo — reward モードでは控えめに
@@ -3162,6 +3360,7 @@ function startEating() {
 function finishReward() {
   state.phase = 'done';
   state.praiseLabel = 'できたね！\nおいしそう ✨';
+  sndFinish();
   document.getElementById('hint').textContent = '🎉 できた！ もう1回やる？';
   celebrate('🎉 できたね！');
   startCelebration();
@@ -3183,6 +3382,8 @@ function finishReward() {
 
 function eatBite(pt) {
   if (state.eatingClicks >= state.eatingMaxClicks) return;
+
+  sndChomp();
 
   // start timing on first bite
   if (state.eatingClicks === 0) state.eatingStartT = performance.now();
@@ -3344,6 +3545,9 @@ function finishEating() {
   subline += ` = ${state.finalScore}てん`;
   state.praiseLabel = headline + '\n' + subline;
 
+  // 新記録なら ファンファーレ、 そうでなければ達成感メロディ
+  if (state.heightNewRecord || state.scoreNewRecord) sndNewRecord();
+  else sndFinish();
   document.getElementById('hint').textContent = '🎉 完食！ もう1回？ → 🔄 もう1回！';
   celebrate('🎉 ごちそうさま！');
   // 🎉 The big celebration only fires at the END (after eating)
@@ -3441,12 +3645,14 @@ function pointerMove(e) {
     void rotItem.offsetWidth;
     rotItem.classList.add('flash');
     spawnRotationBonusFx();
+    sndRotationBonus();
   }
 
   // spawn shavings proportional to rotation distance (slightly reduced so
   // rotation bonuses feel more impactful relative to wiggle-spam)
   const amount = Math.min(10, Math.max(1, Math.round(Math.abs(delta) * 11)));
   spawnShavings(amount, a);
+  sndSlice();  // 80ms throttle で短い「シャリッ」 SE
 }
 
 function pointerUp(e) {
@@ -3466,6 +3672,7 @@ window.addEventListener('touchcancel', pointerUp);
 
 // ---------- mode select ----------
 function selectMode(mode) {
+  sndButton();
   state.mode = mode;
   state.phase = 'ready';
   document.getElementById('hint').textContent = 'ハンドルを グルグル まわそう！⟳';
@@ -3483,6 +3690,7 @@ document.getElementById('btn-done').addEventListener('click', () => {
 
 // 🏠 ホーム: どの phase からでも mode-select に戻る (= state.mode と進行を完全破棄)
 function goHome() {
+  sndHome();
   resetGame();
   state.mode = null;
   state.phase = 'mode-select';
@@ -3569,6 +3777,7 @@ function pourSyrup(color) {
   });
   if (map[color]) document.getElementById(map[color]).classList.add('selected');
 
+  sndSyrup();
   celebrate('🍧 シロップ完了！');
   document.getElementById('hint').textContent = '🍧 美味しそう…！';
 
