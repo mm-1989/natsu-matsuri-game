@@ -6,3 +6,8 @@ node_modules/
 dist/
 .tmp/
 *.swp
+
+# Windows / WSL の個人スクショ (= 開発中に手元へ保存したもの)
+スクリーンショット*.jpg
+スクリーンショット*.png
+
