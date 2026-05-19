@@ -873,6 +873,12 @@ const state = {
   pileShape: 'mokomoko',  // 'fluffy' (ゆっくり回し) | 'mokomoko' (普通) | 'tsuntsun' (速回)
   pileProfile: null,      // finishGame で固定する [{nx, bump}] (= 左右非対称な小ふくらみ)
   playingStartT: 0,       // playing 開始時刻 (= cps 計算用)
+  // M12.5: わたあめ「ふわふわ風あつめ」 専用
+  cottonParticles: [],    // 漂う綿粒 [{x, y, vx, vy, size, side}]
+  cottonSpawnT: 0,        // 粒生成タイマー
+  cottonStrokeTotal: 0,   // 累計 stroke 距離 (= 形タイプ判定)
+  cottonLastPointer: null,// pointerMove 前フレームの位置
+  cottonBalance: 0,       // -1 (左寄り) ↔ +1 (右寄り) 偏り
   best: 0,
   newRecord: false,
   heightNewRecord: false,
@@ -1801,6 +1807,93 @@ function drawHandle(g) {
   ctx.restore();
 }
 
+// ---------- わたあめ「ふわふわ風あつめ」 入力系 / M12.5 ----------
+// 画面下/両端から綿粒が浮上、 指で粒を引いて棒へ寄せると吸収 → 雲が育つ。
+
+function spawnCottonParticle() {
+  const side = Math.random() < 0.5 ? -1 : 1;
+  state.cottonParticles.push({
+    x: side < 0 ? rand(W * 0.05, W * 0.30) : rand(W * 0.70, W * 0.95),
+    y: H + 10,
+    vx: side < 0 ? rand(0.05, 0.25) : rand(-0.25, -0.05),
+    vy: rand(-0.95, -0.55),
+    size: rand(7, 13),
+    side,
+    age: 0,
+  });
+  if (state.cottonParticles.length > 40) state.cottonParticles.shift();
+}
+
+function updateCottonParticles(dt) {
+  if (state.activity !== 'cottoncandy') return;
+  if (state.phase !== 'playing' && state.phase !== 'ready') return;
+  const g = geometry();
+  const stickCX = g.bowlCenterX;
+  const cloudH = state.pileH * 1.32 * g.scale;
+  const stickCY = g.bowlRimY - Math.max(40, cloudH * 0.5);
+
+  for (const p of state.cottonParticles) {
+    // 棒方向への軽い引力 (= 指で触れなくても自然に中央へ向かう、 浮上時の補助)
+    const adx = stickCX - p.x;
+    const ady = stickCY - p.y;
+    const adist = Math.max(1, Math.hypot(adx, ady));
+    p.vx += (adx / adist) * 0.012 * dt;
+    p.vy += (ady / adist) * 0.012 * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.age += dt;
+    // 棒中心に近づいたら吸収 → 雲が育つ (= 判定広め)
+    const dx = stickCX - p.x;
+    const dy = stickCY - p.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 45) {
+      state.shavings += 3;
+      updatePile();
+      // 寄せた方向で偏り (= side -1 = 左から寄せ → 左 bump、 +1 = 右から寄せ → 右 bump)
+      state.cottonBalance += -p.side * 0.08;
+      // 「自分の雲」 用に pileProfile を加算 (= 寄せた位置に小ふくらみ)
+      if (!state.pileProfile) state.pileProfile = [];
+      if (state.pileProfile.length < 12) {
+        state.pileProfile.push({
+          nx: clamp(-p.side * 0.5 + rand(-0.3, 0.3), -0.85, 0.85),
+          depth: rand(0.03, 0.07),
+          width: rand(0.10, 0.18),
+        });
+      }
+      sndRotationBonus();  // 「キラン」 = 吸収 SE 流用
+      p.captured = true;
+    }
+  }
+  state.cottonParticles = state.cottonParticles.filter(p =>
+    !p.captured && p.y > -50 && p.y < H + 100 && p.age < 600
+  );
+
+  // 定期生成 (= playing 中はずっと粒が浮上)
+  state.cottonSpawnT += dt;
+  if (state.cottonSpawnT > 14) {  // ≈ 0.23s 間隔 (= 多めに浮上で 3-5 歳が触りやすい)
+    spawnCottonParticle();
+    state.cottonSpawnT = 0;
+  }
+}
+
+function drawCottonParticles() {
+  if (state.activity !== 'cottoncandy') return;
+  if (state.phase !== 'playing' && state.phase !== 'ready') return;
+  for (const p of state.cottonParticles) {
+    ctx.save();
+    // ふんわり粒: 中心明 + 外周淡
+    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+    grad.addColorStop(0.6, 'rgba(255, 248, 240, 0.7)');
+    grad.addColorStop(1, 'rgba(255, 220, 195, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 // ---------- わたあめ (cottoncandy) procedural 描画 / M12.1 ----------
 // 機械本体 (= 砂糖を回す円筒)、 棒 (= 雲を貫く茶色の縦棒)、 雲 (= ふんわり山) を描画。
 // sprite 化は M12.3 で予定 (= 既存 sprite path に乗せる)。
@@ -2298,6 +2391,7 @@ function drawScene() {
     drawCandyMachine(g);
     drawCloud(g);   // 内部で syrupCoating の色を反映 (= 雲全体着色)
     drawStick(g);   // 雲の前面、 棒が貫く感
+    drawCottonParticles();  // M12.5: 漂う綿粒 (= 雲・棒の手前に重ねる)
   } else {
     drawBowl(g);
     drawPile(g);
@@ -3352,6 +3446,7 @@ function loop() {
   if (state.syncJumpT > 0) state.syncJumpT = Math.max(0, state.syncJumpT - ms / 1000);
 
   updateParticles(dt);
+  updateCottonParticles(dt);  // M12.5: わたあめ綿粒
   updateBgAnimals(dt);
   updateClouds(dt);
   updateFestivalBits(dt);
@@ -3414,24 +3509,39 @@ function finishGame() {
   state.lastPointerAngle = null;
   canvas.classList.remove('dragging');
   const isReward = state.mode === 'reward';
-  // M9.1: ハンドル回し方 (= cps) から「形タイプ」 を確定
-  // 落とし穴回避: どの形も「個性ある肯定的形」 として描く (= 失敗形なし)
-  const elapsed = Math.max(0.5, (performance.now() - state.playingStartT) / 1000);
-  const cps = state.rotations / elapsed;
-  // 閾値は実 user 速度を想定: 人間が手で「速く回す」 で 1.0-2.0 cps、 普通 0.5-0.9、 ゆっくり < 0.5
-  if      (cps < 0.55) state.pileShape = 'fluffy';    // ゆっくり = ふわふわ
-  else if (cps < 1.05) state.pileShape = 'mokomoko';  // 普通 = もこもこ
-  else                 state.pileShape = 'tsuntsun';  // 速回 = つんつん
-  // 手作りでこぼこ (= 左右非対称な小ふくらみを 8 個ランダム配置で固定)
-  const profile = [];
-  for (let i = 0; i < 8; i++) {
-    profile.push({
-      nx:    rand(-0.85, 0.85),
-      depth: rand(0.02, 0.07),
-      width: rand(0.10, 0.20),
-    });
+  // M9.1 / M12.5: 「形タイプ」 を屋台ごとの入力から判定 (= 失敗形なし)
+  if (state.activity === 'cottoncandy') {
+    // わたあめ: ストローク総距離で size 別 (= たくさん撫でたら大きく)
+    const s = state.cottonStrokeTotal;
+    if      (s < 600)  state.pileShape = 'fluffy';
+    else if (s < 1800) state.pileShape = 'mokomoko';
+    else               state.pileShape = 'tsuntsun';
+    // 吸収時に追加された bump を活かす、 不足分だけ補充
+    if (!state.pileProfile) state.pileProfile = [];
+    while (state.pileProfile.length < 8) {
+      state.pileProfile.push({
+        nx:    rand(-0.85, 0.85),
+        depth: rand(0.02, 0.05),
+        width: rand(0.10, 0.18),
+      });
+    }
+  } else {
+    // かき氷: ハンドル回転速度 cps から (実 user で 1.0-2.0 cps が「速く」)
+    const elapsed = Math.max(0.5, (performance.now() - state.playingStartT) / 1000);
+    const cps = state.rotations / elapsed;
+    if      (cps < 0.55) state.pileShape = 'fluffy';
+    else if (cps < 1.05) state.pileShape = 'mokomoko';
+    else                 state.pileShape = 'tsuntsun';
+    const profile = [];
+    for (let i = 0; i < 8; i++) {
+      profile.push({
+        nx:    rand(-0.85, 0.85),
+        depth: rand(0.02, 0.07),
+        width: rand(0.10, 0.20),
+      });
+    }
+    state.pileProfile = profile;
   }
-  state.pileProfile = profile;
   // Freeze the achieved height for scoring purposes
   state.frozenHeightCm = Math.round(state.pileH / 4);
   state.frozenPileH = state.pileH;
@@ -3516,9 +3626,11 @@ function startGame() {
   state.phase = 'playing';
   state.timeLeft = GAME_DURATION;
   state.playingStartT = performance.now();  // M9.1: cps 計算用
-  document.getElementById('hint').textContent = state.mode === 'reward'
-    ? 'すきなだけ まわしてね ♪「できた！」 ボタンで かんせい'
-    : 'ぐるぐる回そう！！ ⟳';
+  let hint;
+  if (state.activity === 'cottoncandy')   hint = 'ゆびで わたを あつめてね ♪「できた！」 で かんせい';
+  else if (state.mode === 'reward')        hint = 'すきなだけ まわしてね ♪「できた！」 ボタンで かんせい';
+  else                                     hint = 'ぐるぐる回そう！！ ⟳';
+  document.getElementById('hint').textContent = hint;
   updatePhaseUI();
 }
 
@@ -3693,12 +3805,20 @@ function pointerDown(e) {
   if (state.phase === 'finished' || state.phase === 'done') return;
   e.preventDefault();
   const pt = getPointer(e);
+
+  // わたあめ: 画面どこ touch でも isDragging、 ハンドル grab 不要
+  if (state.activity === 'cottoncandy') {
+    state.isDragging = true;
+    state.cottonLastPointer = pt;
+    canvas.classList.add('dragging');
+    return;
+  }
+
+  // かき氷: ハンドル近接で grab
   const g = geometry();
-  // any pointerdown near handle starts dragging; also allow dragging anywhere if near pivot region
   const dx = pt.x - g.handlePivotX;
   const dy = pt.y - g.handlePivotY;
   const dist = Math.hypot(dx, dy);
-  // allow grabbing anywhere within reasonable range around handle
   if (dist < g.armLen + 50) {
     state.isDragging = true;
     state.lastPointerAngle = Math.atan2(dy, dx);
@@ -4024,6 +4144,32 @@ function pointerMove(e) {
   if (!state.isDragging) return;
   e.preventDefault();
   const pt = getPointer(e);
+
+  // わたあめ: 粒を指方向に引く + stroke 集計
+  if (state.activity === 'cottoncandy') {
+    for (const p of state.cottonParticles) {
+      const dx = pt.x - p.x;
+      const dy = pt.y - p.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 60) {
+        const force = 0.20 * (1 - dist / 60);
+        p.vx += (dx / Math.max(1, dist)) * force;
+        p.vy += (dy / Math.max(1, dist)) * force;
+        const sp = Math.hypot(p.vx, p.vy);
+        if (sp > 3.5) { p.vx = p.vx / sp * 3.5; p.vy = p.vy / sp * 3.5; }
+      }
+    }
+    if (state.cottonLastPointer) {
+      const sdx = pt.x - state.cottonLastPointer.x;
+      const sdy = pt.y - state.cottonLastPointer.y;
+      state.cottonStrokeTotal += Math.hypot(sdx, sdy);
+    }
+    state.cottonLastPointer = pt;
+    if (state.phase === 'ready') startGame();
+    sndSlice();  // なでる感の SE (= 既存 80ms throttle)
+    return;
+  }
+
   const g = geometry();
   const a = Math.atan2(pt.y - g.handlePivotY, pt.x - g.handlePivotX);
   let delta = a - state.lastPointerAngle;
@@ -4115,7 +4261,7 @@ function selectMode(mode) {
   state.mode = mode;
   state.phase = 'ready';
   document.getElementById('hint').textContent = state.activity === 'cottoncandy'
-    ? 'ぼうを グルグル まわそう！⟳'
+    ? 'ゆびで わたを あつめよう ☁️'
     : 'ハンドルを グルグル まわそう！⟳';
   updatePhaseUI();
 }
@@ -4330,6 +4476,12 @@ function resetGame() {
   state.pileShape = 'mokomoko';
   state.pileProfile = null;
   state.playingStartT = 0;
+  // M12.5: わたあめ綿粒系もリセット
+  state.cottonParticles = [];
+  state.cottonSpawnT = 0;
+  state.cottonStrokeTotal = 0;
+  state.cottonLastPointer = null;
+  state.cottonBalance = 0;
   // 🆕 reset all brushup state
   state.pileSparkles = [];
   state.timeUpFlashT = 0;
@@ -4353,9 +4505,11 @@ function resetGame() {
   resetBtn.style.opacity = '';
   resetBtn.style.pointerEvents = '';
   resetBtn.style.transition = '';
-  document.getElementById('hint').textContent = state.mode === 'reward'
-    ? 'すきなだけ まわしてね ♪'
-    : 'ハンドルを回すと 30 秒のタイマー開始！';
+  let resetHint;
+  if (state.activity === 'cottoncandy')   resetHint = 'ゆびで わたを あつめてね ♪';
+  else if (state.mode === 'reward')        resetHint = 'すきなだけ まわしてね ♪';
+  else                                     resetHint = 'ハンドルを回すと 30 秒のタイマー開始！';
+  document.getElementById('hint').textContent = resetHint;
   updatePhaseUI();
 }
 
