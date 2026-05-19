@@ -325,6 +325,20 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   letter-spacing: 0.08em;
   animation: confirm-pulse 1.4s ease-in-out infinite;
 }
+
+/* ホームボタン — mode-select 以外で常時表示、 controls pill の左端固定 */
+.home-btn {
+  background: #fafafa;
+  color: #2a3a4d;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 9px 14px;
+  letter-spacing: 0.04em;
+  /* flex 内で左端に押し付ける */
+  margin-right: auto;
+  min-height: 38px;
+}
+.home-btn:hover { background: #fff; }
 /* During the brief lockout after eating, the button is greyed and doesn't
    pulse — so an in-flight click can't accidentally trigger a retry. */
 .reset-btn.big.locked {
@@ -621,6 +635,7 @@ button.syrup.selected:hover { transform: translate(0, 0); }
       <button class="syrup s-ichigo" id="btn-ichigo" onclick="pourSyrup('#e94560')" disabled>🍓 いちご</button>
       <button class="syrup s-melon"  id="btn-melon"  onclick="pourSyrup('#6cba87')" disabled>🍈 メロン</button>
       <button class="syrup s-blue"   id="btn-blue"   onclick="pourSyrup('#4287d6')" disabled>💙 ブルー</button>
+      <button class="home-btn" id="btn-home" type="button">🏠 ホーム</button>
       <button class="syrup s-lemon"  id="btn-lemon"  onclick="pourSyrup('#f2c94c')" disabled>🍋 レモン</button>
       <button class="done-btn" id="btn-done" type="button">✅ できた！</button>
       <button class="reset-btn" id="btn-reset" onclick="resetGame()">🔄 もう1回！</button>
@@ -2689,10 +2704,10 @@ function drawTitleScreen(g) {
 
   ctx.font = 'bold 20px "Zen Maru Gothic", sans-serif';
   ctx.fillStyle = '#2a3a4d';
-  ctx.fillText('▶ クリックでスタート！', 0, 1);
+  ctx.fillText('▶ タップで すすむ ♪', 0, 1);
   ctx.restore();
 
-  // Subtle bottom hint — bigger and more inviting
+  // Subtle bottom hint — title は スプラッシュ なのですぐ次画面へ進む示唆
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -2700,9 +2715,9 @@ function drawTitleScreen(g) {
   ctx.lineWidth = 4;
   ctx.lineJoin = 'round';
   ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-  ctx.strokeText('ハンドルを回して 30 秒で巨大カキ氷を作ろう！', W / 2, H * 0.58);
+  ctx.strokeText('もうすぐ はじまるよ ♪', W / 2, H * 0.58);
   ctx.fillStyle = '#2a3a4d';
-  ctx.fillText('ハンドルを回して 30 秒で巨大カキ氷を作ろう！', W / 2, H * 0.58);
+  ctx.fillText('もうすぐ はじまるよ ♪', W / 2, H * 0.58);
   ctx.restore();
 }
 
@@ -2996,9 +3011,13 @@ function updatePhaseUI() {
   // reward モードでは scoreboard を完全非表示 (3-5 歳向け = 数字なし)
   document.querySelector('.scoreboard').style.display = isReward ? 'none' : '';
 
+  // 🏠 ホームボタンは title / mode-select 以外で常時表示 (= 全 phase から戻れる)
+  const showHome = phase !== 'title' && phase !== 'mode-select';
   const showSyrup = phase === 'finished';
   const showReset = phase === 'done';
   const showDoneBtn = isReward && phase === 'playing';
+
+  document.getElementById('btn-home').style.display = showHome ? '' : 'none';
 
   ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
     document.getElementById(id).style.display = showSyrup ? '' : 'none';
@@ -3010,7 +3029,7 @@ function updatePhaseUI() {
   const doneBtn = document.getElementById('btn-done');
   doneBtn.style.display = showDoneBtn ? '' : 'none';
 
-  const anyVisible = showSyrup || showReset || showDoneBtn;
+  const anyVisible = showHome || showSyrup || showReset || showDoneBtn;
   const ctrls = document.getElementById('controls');
   ctrls.classList.toggle('hidden', !anyVisible);
   ctrls.classList.toggle('center', phase === 'done');
@@ -3414,6 +3433,16 @@ document.getElementById('btn-done').addEventListener('click', () => {
   finishGame();
 });
 
+// 🏠 ホーム: どの phase からでも mode-select に戻る (= state.mode と進行を完全破棄)
+function goHome() {
+  resetGame();
+  state.mode = null;
+  state.phase = 'mode-select';
+  document.getElementById('hint').textContent = 'モードを えらんでね';
+  updatePhaseUI();
+}
+document.getElementById('btn-home').addEventListener('click', goHome);
+
 // ---------- syrup ----------
 
 // helper: shift a hex color toward white or black for highlights/shadows
@@ -3568,6 +3597,17 @@ window.addEventListener('resize', resize);
 resize();
 updatePhaseUI();
 requestAnimationFrame(loop);
+
+// title 画面はスプラッシュ扱い: 1.8 秒で自動的に mode-select へ
+// (= 「もどる」 経路がない title 画面で迷子になるのを防ぐ。
+//  早く始めたい user は title 中の canvas タップで即 mode-select へ skip 可)
+setTimeout(() => {
+  if (state.phase === 'title') {
+    state.phase = 'mode-select';
+    document.getElementById('hint').textContent = 'モードを えらんでね';
+    updatePhaseUI();
+  }
+}, 1800);
 </script>
 </body>
 </html>
