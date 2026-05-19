@@ -621,10 +621,11 @@ button.syrup.selected:hover { transform: translate(0, 0); }
 .ms-stall:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
 .ms-stall:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 
-.ms-stall.ms-stall-active {
+.ms-stall.ms-stall-active,
+.ms-stall.selected {
   background: #ffe1a8;
-  border-color: var(--ink);
-  /* 「いま選ばれてる」 = 軽く強調 */
+  /* 「いま選ばれてる」 = 強調枠 + glow */
+  box-shadow: 3px 3px 0 var(--ink), 0 0 0 3px #ffce4a;
 }
 
 .ms-stall.ms-stall-coming {
@@ -778,15 +779,14 @@ button.syrup.selected:hover { transform: translate(0, 0); }
            今は かき氷 1 つ active、 残り 2 つは じゅんびちゅう。 第 2 屋台 (M12+) で順次差替。 -->
       <h2 class="ms-title">どの 屋台で あそぶ？</h2>
       <div class="ms-stalls">
-        <button class="ms-stall ms-stall-active" type="button" id="btn-stall-kakigori">
+        <button class="ms-stall selected" type="button" id="btn-stall-kakigori" data-activity="kakigori">
           <span class="ms-stall-emoji">🍧</span>
           <span class="ms-stall-label">かき氷</span>
         </button>
-        <div class="ms-stall ms-stall-coming" aria-hidden="true">
+        <button class="ms-stall" type="button" id="btn-stall-cottoncandy" data-activity="cottoncandy">
           <span class="ms-stall-emoji">☁️</span>
-          <span class="ms-stall-label">じゅんび</span>
-          <span class="ms-stall-sub">ちゅう</span>
-        </div>
+          <span class="ms-stall-label">わたあめ</span>
+        </button>
         <div class="ms-stall ms-stall-coming" aria-hidden="true">
           <span class="ms-stall-emoji">🐟</span>
           <span class="ms-stall-label">じゅんび</span>
@@ -1247,12 +1247,18 @@ function geometry() {
 // ---------- pile shape (= 自分のかき氷 / M9.1) ----------
 // 形タイプ別の dome パラメータ。 「失敗形なし」: どれも肯定的な個性として描く。
 const PILE_SHAPES = {
-  fluffy:   { power: 0.85, rMul: 1.12, hMul: 0.88, name: 'ふわふわ' },  // 広く低く
-  mokomoko: { power: 1.30, rMul: 1.00, hMul: 1.00, name: 'もこもこ' },  // 既存
-  tsuntsun: { power: 2.20, rMul: 0.85, hMul: 1.10, name: 'つんつん' },  // 細く高く
+  fluffy:   { power: 0.85, rMul: 1.12, hMul: 0.88, name: 'ふわふわ', cloudName: 'ふわふわ' },
+  mokomoko: { power: 1.30, rMul: 1.00, hMul: 1.00, name: 'もこもこ', cloudName: 'まんまる' },
+  tsuntsun: { power: 2.20, rMul: 0.85, hMul: 1.10, name: 'つんつん', cloudName: 'もりもり' },
 };
 function getPileShape() {
-  return PILE_SHAPES[state.pileShape] || PILE_SHAPES.mokomoko;
+  const sh = PILE_SHAPES[state.pileShape] || PILE_SHAPES.mokomoko;
+  // 屋台ごとに形タイプ名を切り替え (= わたあめでは「つんつん」 は不自然なので別 alias)
+  const isCloud = state.activity === 'cottoncandy';
+  return { ...sh, name: isCloud ? sh.cloudName : sh.name };
+}
+function getActivityName() {
+  return { kakigori: 'かき氷', cottoncandy: 'わたあめ' }[state.activity] || 'かき氷';
 }
 // nx ∈ [-1, 1] における山表面の高さ。 h は基準スケール後の値を渡す。
 function pileSurfaceHeight(nx, h) {
@@ -1795,6 +1801,149 @@ function drawHandle(g) {
   ctx.restore();
 }
 
+// ---------- わたあめ (cottoncandy) procedural 描画 / M12.1 ----------
+// 機械本体 (= 砂糖を回す円筒)、 棒 (= 雲を貫く茶色の縦棒)、 雲 (= ふんわり山) を描画。
+// sprite 化は M12.3 で予定 (= 既存 sprite path に乗せる)。
+
+function drawCandyMachine(g) {
+  if (state.phase === 'reveal') return;
+  const cx = g.machineCenterX;
+  const bottomY = g.machineBottomY;
+  const topY = g.machineTopY;
+  const s = g.scale;
+
+  ctx.save();
+  if (state.mode === 'reward' && state.phase === 'done') ctx.globalAlpha = 0.30;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a3a4d';
+
+  // 円筒本体
+  ctx.fillStyle = '#f5f0e0';
+  roundRect(cx - 50 * s, topY + 20 * s, 100 * s, (bottomY - topY) - 20 * s, 8 * s);
+  ctx.fill();
+  ctx.stroke();
+
+  // 上面開口部 (= 砂糖が出てくる)
+  ctx.fillStyle = '#777';
+  ctx.beginPath();
+  ctx.ellipse(cx, topY + 18 * s, 38 * s, 9 * s, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  // 内側の影
+  ctx.fillStyle = '#555';
+  ctx.beginPath();
+  ctx.ellipse(cx, topY + 18 * s, 30 * s, 5 * s, 0, 0, TAU);
+  ctx.fill();
+
+  // ラベル (= 「糖」)
+  ctx.fillStyle = '#fff8e1';
+  roundRect(cx - 28 * s, topY + 48 * s, 56 * s, 32 * s, 4 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#2a3a4d';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#e94560';
+  ctx.font = `${20 * s}px 'Yusei Magic', serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('糖', cx, topY + 64 * s);
+
+  // ヒーター (= 機械内部の オレンジ glow を 機械下半分にうっすら)
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a3a4d';
+  const heatY = topY + 100 * s;
+  ctx.fillStyle = '#ffb347';
+  ctx.globalAlpha = 0.55;
+  roundRect(cx - 36 * s, heatY, 72 * s, 16 * s, 4 * s);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.stroke();
+
+  // 足
+  ctx.fillStyle = '#3d3d3d';
+  roundRect(cx - 54 * s, bottomY - 2, 108 * s, 6 * s, 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// 棒 (= 雲を貫く縦棒)。 雲とハンドルの間の連結を視覚化。
+function drawStick(g) {
+  if (state.phase === 'reveal') {
+    // reveal でも棒は完成品の一部なので表示 (= 機械は隠す、 棒は雲と一体)
+  }
+  const cx = g.bowlCenterX;
+  const baseY = g.bowlRimY;
+  const s = g.scale;
+  // 棒の長さ: 雲の中央付近まで突き抜ける
+  const cloudH = state.pileH * 1.32 * s;  // drawCloud と合わせる
+  const stickTopY = baseY - cloudH * 0.55;
+  const stickBottomY = baseY + (state.phase === 'reveal' ? 20 * s : 0);
+
+  ctx.save();
+  if (state.mode === 'reward' && state.phase === 'done') ctx.globalAlpha = 0.30;
+  ctx.fillStyle = '#c89668';
+  ctx.strokeStyle = '#5e3e26';
+  ctx.lineWidth = 2;
+  const stickX = cx - 3 * s;
+  const stickW = 6 * s;
+  ctx.fillRect(stickX, stickTopY, stickW, stickBottomY - stickTopY);
+  ctx.strokeRect(stickX, stickTopY, stickW, stickBottomY - stickTopY);
+  ctx.restore();
+}
+
+// 雲 (= ふんわりした わたあめ)。 既存 pileH/pileR を流用、 ふくらみを 3 つの bump で表現
+function drawCloud(g) {
+  if (state.pileH < 1) return;
+  const r = state.pileR * 1.18 * g.scale;
+  const h = state.pileH * 1.32 * g.scale;
+  const cx = g.bowlCenterX;
+  const baseY = g.bowlRimY;
+
+  // 雲の色: syrup 未選択は白〜淡橙、 選択後は その色 (= 雲全体に染み込む演出)
+  let topCol = '#ffffff', midCol = '#fff7f3', botCol = '#ffdbc8';
+  if (state.syrupCoating) {
+    const c = state.syrupCoating;
+    const t = c.progress;
+    topCol = mixColorHex('#ffffff', c.lightColor, t);
+    midCol = mixColorHex('#fff7f3', c.color,      t);
+    botCol = mixColorHex('#ffdbc8', c.darkColor,  t);
+  }
+  const grad = ctx.createLinearGradient(cx, baseY - h, cx, baseY);
+  grad.addColorStop(0,    topCol);
+  grad.addColorStop(0.55, midCol);
+  grad.addColorStop(1,    botCol);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx - r, baseY);
+  for (let x = -r; x <= r; x += 2) {
+    const nx = x / r;
+    let dome = h * Math.pow(Math.cos(nx * Math.PI / 2), 0.7);  // ふんわり = 低 power
+    // ふくらみを 3 つ加算 (= 「雲」 ぽさ)
+    dome += h * 0.10 * Math.sin(nx * Math.PI * 2 + 1.2);
+    dome += h * 0.06 * Math.cos(nx * Math.PI * 3);
+    // pileProfile の bump (= 自分のかき氷のでこぼこ) も雲に適用 → ユニーク化
+    if (state.pileProfile) {
+      for (const f of state.pileProfile) {
+        const t = (nx - f.nx) / f.width;
+        if (Math.abs(t) >= 1) continue;
+        dome += h * f.depth * Math.pow(Math.cos(t * Math.PI / 2), 2);
+      }
+    }
+    ctx.lineTo(cx + x, baseY - Math.max(0, dome));
+  }
+  ctx.lineTo(cx + r, baseY);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = '#e8c8a8';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function roundRect(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -2144,12 +2293,18 @@ function drawScene() {
   // 🐧 BACK layer animals — drawn first, end up behind the bowl/machine
   drawBgAnimals(g, 'back');
 
-  // bowl, pile, machine
-  drawBowl(g);
-  drawPile(g);
-  drawSyrupCoating(g);
-  drawSyrupStream(g);
-  drawMachine(g);
+  // activity 分岐: かき氷 (= 既存) vs わたあめ (= M12.1)
+  if (state.activity === 'cottoncandy') {
+    drawCandyMachine(g);
+    drawCloud(g);   // 内部で syrupCoating の色を反映 (= 雲全体着色)
+    drawStick(g);   // 雲の前面、 棒が貫く感
+  } else {
+    drawBowl(g);
+    drawPile(g);
+    drawSyrupCoating(g);
+    drawSyrupStream(g);
+    drawMachine(g);
+  }
 
   // ✨ Pile surface sparkles — make the ice glitter magically
   drawPileSparkles();
@@ -3590,9 +3745,9 @@ function startEating() {
 function finishReward() {
   state.phase = 'reveal';
   state.revealT = 0;
-  // M9.1: 形タイプを使った命名 (= 「ふわふわ かき氷 / できたね！」 のように 自分の作品感を強化)
+  // M9.1 + M12: 形タイプ + 屋台名で命名 (= 「ふわふわ かき氷」 「ふわふわ わたあめ」 等)
   const shapeName = getPileShape().name;
-  state.praiseLabel = `${shapeName} かき氷\nできたね！`;
+  state.praiseLabel = `${shapeName} ${getActivityName()}\nできたね！`;
   sndFinish();
   document.getElementById('hint').textContent = '✨ できあがり〜！';
   celebrate('🎉 できたね！');
@@ -3622,9 +3777,9 @@ function finishReward() {
 // reveal → done: 完成展示を抜けて 「もう1回」 ボタンを出す
 function finishReveal() {
   state.phase = 'done';
-  // M9.1: done でも形タイプ名を維持 (= 自分の作品感の継続)
+  // M9.1 + M12: done でも形タイプ名 + 屋台名 を維持
   const shapeName = getPileShape().name;
-  state.praiseLabel = `${shapeName} かき氷\nおいしそう ✨`;
+  state.praiseLabel = `${shapeName} ${getActivityName()}\nおいしそう ✨`;
   document.getElementById('hint').textContent = '🎉 できた！ もう1回やる？';
   updatePhaseUI();
   bounceControls();
@@ -3929,19 +4084,49 @@ window.addEventListener('touchend', pointerUp);
 window.addEventListener('touchcancel', pointerUp);
 
 // ---------- mode select ----------
+// M12.0: 屋台を切り替える (= ハイブリッド型ホームメニューの上段操作)
+function selectStall(activity) {
+  if (activity === state.activity) return;
+  sndButton();
+  state.activity = activity;
+  document.querySelectorAll('.ms-stall').forEach(el => el.classList.remove('selected'));
+  const btn = document.getElementById(`btn-stall-${activity}`);
+  if (btn) btn.classList.add('selected');
+  // 屋台ごとに利用可能モードが違う: わたあめは のんびり 限定
+  updateModeAvailability();
+}
+
+// 屋台に応じてモードボタンの enable/disable を更新
+function updateModeAvailability() {
+  const challengeBtn = document.getElementById('btn-mode-challenge');
+  if (state.activity === 'cottoncandy') {
+    challengeBtn.disabled = true;
+    challengeBtn.classList.add('locked');
+  } else {
+    challengeBtn.disabled = false;
+    challengeBtn.classList.remove('locked');
+  }
+}
+
 function selectMode(mode) {
   sndButton();
-  state.activity = 'kakigori';  // M11: 現状は屋台 1 つだけ、 第 2 屋台で動的に
+  // わたあめは のんびり (= reward) 限定
+  if (state.activity === 'cottoncandy' && mode === 'challenge') return;
   state.mode = mode;
   state.phase = 'ready';
-  document.getElementById('hint').textContent = 'ハンドルを グルグル まわそう！⟳';
+  document.getElementById('hint').textContent = state.activity === 'cottoncandy'
+    ? 'ぼうを グルグル まわそう！⟳'
+    : 'ハンドルを グルグル まわそう！⟳';
   updatePhaseUI();
 }
 document.getElementById('btn-mode-reward').addEventListener('click', () => selectMode('reward'));
 document.getElementById('btn-mode-challenge').addEventListener('click', () => selectMode('challenge'));
 
-// 屋台タイル: 現状はかき氷 1 つだけ。 click で「選んでる」 fb音だけ鳴らす (= 模擬的選択感)
-document.getElementById('btn-stall-kakigori').addEventListener('click', () => sndButton());
+// 屋台タイル: click で activity 切替
+document.getElementById('btn-stall-kakigori').addEventListener('click', () => selectStall('kakigori'));
+document.getElementById('btn-stall-cottoncandy').addEventListener('click', () => selectStall('cottoncandy'));
+// 初期 challenge ボタン状態 (= 起動時 activity='kakigori' なので OK だが念のため)
+updateModeAvailability();
 
 // reward モード: 「できた！」 ボタンで finished フェーズへ (= タイマー切れの代わり)
 document.getElementById('btn-done').addEventListener('click', () => {
@@ -3999,6 +4184,22 @@ async function shareKakigori(ev) {
 document.getElementById('btn-share').addEventListener('click', shareKakigori);
 
 // ---------- syrup ----------
+
+// helper: 2 色の hex を t (0-1) で線形補間 (= わたあめ着色用 / M12.1)
+function mixColorHex(c1, c2, t) {
+  const parse = (hex) => {
+    const h = hex.replace('#','');
+    return h.length === 3
+      ? [parseInt(h[0]+h[0],16), parseInt(h[1]+h[1],16), parseInt(h[2]+h[2],16)]
+      : [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  };
+  const [r1,g1,b1] = parse(c1);
+  const [r2,g2,b2] = parse(c2);
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
 
 // helper: shift a hex color toward white or black for highlights/shadows
 function shadeHex(hex, amt) {
