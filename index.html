@@ -326,19 +326,28 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   animation: confirm-pulse 1.4s ease-in-out infinite;
 }
 
-/* ホームボタン — mode-select 以外で常時表示、 controls pill の左端固定 */
+/* Safety-net ゾーン — ホーム専用、 画面左下に常時固定。 主役 pill と物理的に離す。
+   Codex 案: 「Primary と Safety-net を同一 pill に混ぜない」 隣接禁止ルール。 */
+.safety-controls {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 7;
+}
+.safety-controls.hidden { display: none; }
+
+/* ホームボタン — Safety-net 階層、 白/低彩度、 主役より目立たない。 44×44 以上の tap target */
 .home-btn {
-  background: #fafafa;
+  background: #fff;
   color: #2a3a4d;
   font-weight: 700;
   font-size: 13px;
-  padding: 9px 14px;
+  padding: 10px 16px;
   letter-spacing: 0.04em;
-  /* flex 内で左端に押し付ける */
-  margin-right: auto;
-  min-height: 38px;
+  min-width: 88px;
+  min-height: 44px;
 }
-.home-btn:hover { background: #fff; }
+.home-btn:hover { background: #fff; transform: translate(-1px, -1px); }
 /* During the brief lockout after eating, the button is greyed and doesn't
    pulse — so an in-flight click can't accidentally trigger a retry. */
 .reset-btn.big.locked {
@@ -373,7 +382,7 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   position: relative;
 }
 
-.controls {
+.action-controls {
   position: absolute;
   bottom: 14px;
   left: 50%;
@@ -391,32 +400,23 @@ button.syrup.selected:hover { transform: translate(0, 0); }
   max-width: 92%;
   backdrop-filter: blur(4px);
 }
-.controls.hidden { display: none; }
-.controls.center {
+.action-controls.hidden { display: none; }
+.action-controls.center {
   bottom: auto;
   top: 50%;
   transform: translate(-50%, -50%);
 }
-/* ホーム単独表示時 (= challenge playing 中など) は pill 自体を画面左下に固定。
-   「戻る場所が身体で覚えやすい」 という Codex 指摘への対応。 */
-.controls.lone-home {
-  left: 14px;
-  transform: none;
-  bottom: 14px;
-  padding: 6px 12px;
-}
-
 /* Hide temporarily so the next-step UI feels like a fresh appearance */
-.controls.hide-temp {
+.action-controls.hide-temp {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
 }
 /* Bouncy entrance to grab attention when 食べる becomes available */
-.controls.reveal {
+.action-controls.reveal {
   animation: pill-reveal 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.controls.center.reveal {
+.action-controls.center.reveal {
   animation: pill-reveal-center 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes pill-reveal {
@@ -642,14 +642,18 @@ button.syrup.selected:hover { transform: translate(0, 0); }
       </div>
       <div class="ms-hint">えらんで タップしてね</div>
     </div>
-    <div class="controls" id="controls">
+    <!-- Primary 専用 pill (= シロップ / もう1回 / できた!)。 ホームは入れない (= 隣接禁止ルール) -->
+    <div class="action-controls" id="action-controls">
       <button class="syrup s-ichigo" id="btn-ichigo" onclick="pourSyrup('#e94560')" disabled>🍓 いちご</button>
       <button class="syrup s-melon"  id="btn-melon"  onclick="pourSyrup('#6cba87')" disabled>🍈 メロン</button>
       <button class="syrup s-blue"   id="btn-blue"   onclick="pourSyrup('#4287d6')" disabled>💙 ブルー</button>
-      <button class="home-btn" id="btn-home" type="button">🏠 ホーム</button>
       <button class="syrup s-lemon"  id="btn-lemon"  onclick="pourSyrup('#f2c94c')" disabled>🍋 レモン</button>
       <button class="done-btn" id="btn-done" type="button">✅ できた！</button>
       <button class="reset-btn" id="btn-reset" onclick="resetGame()">🔄 もう1回！</button>
+    </div>
+    <!-- Safety-net 専用 ゾーン (= 左下固定、 主役と物理的に離す) -->
+    <div class="safety-controls" id="safety-controls">
+      <button class="home-btn" id="btn-home" type="button">🏠 ホーム</button>
     </div>
   </div>
 
@@ -3006,7 +3010,7 @@ function celebrate(msg, opts = {}) {
 // Apply a bouncy entrance animation to the controls pill — used whenever the
 // pill becomes visible at a new phase, so the user can't miss what's there
 function bounceControls() {
-  const ctrls = document.getElementById('controls');
+  const ctrls = document.getElementById('action-controls');
   ctrls.classList.remove('reveal');
   void ctrls.offsetWidth;
   ctrls.classList.add('reveal');
@@ -3032,8 +3036,10 @@ function updatePhaseUI() {
   const showReset = phase === 'done';
   const showDoneBtn = isReward && phase === 'playing';
 
-  document.getElementById('btn-home').style.display = showHome ? '' : 'none';
+  // Safety-net 階層: ホーム専用ゾーン (= 左下固定、 Primary と別 DOM)
+  document.getElementById('safety-controls').classList.toggle('hidden', !showHome);
 
+  // Primary 階層: action pill 内のボタンを phase で出し分け
   ['btn-ichigo','btn-melon','btn-blue','btn-lemon'].forEach(id => {
     document.getElementById(id).style.display = showSyrup ? '' : 'none';
   });
@@ -3044,13 +3050,11 @@ function updatePhaseUI() {
   const doneBtn = document.getElementById('btn-done');
   doneBtn.style.display = showDoneBtn ? '' : 'none';
 
-  const anyVisible = showHome || showSyrup || showReset || showDoneBtn;
-  const ctrls = document.getElementById('controls');
-  ctrls.classList.toggle('hidden', !anyVisible);
+  // action pill 自体は Primary が 1 個でもあれば visible (= showHome は除外)
+  const actionVisible = showSyrup || showReset || showDoneBtn;
+  const ctrls = document.getElementById('action-controls');
+  ctrls.classList.toggle('hidden', !actionVisible);
   ctrls.classList.toggle('center', phase === 'done');
-  // ホーム単独表示 (= 他の主役ボタンがない) のときは pill を左下固定 → 一貫した戻る場所
-  const loneHome = showHome && !showSyrup && !showReset && !showDoneBtn;
-  ctrls.classList.toggle('lone-home', loneHome);
   // Canvas cursor: pointer during eating + title to invite clicks
   canvas.classList.toggle('eating', phase === 'eating' || phase === 'title');
 }
